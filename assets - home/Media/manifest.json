@@ -1,7 +1,19 @@
 {
   "items": [
     {
+      "src": "assets - home/.web/Media/Aoki Wallpaper.webp",
+      "type": "image"
+    },
+    {
       "src": "assets - home/.web/Media/CMS01043.webp",
+      "type": "image"
+    },
+    {
+      "src": "assets - home/.web/Media/DSC09478.webp",
+      "type": "image"
+    },
+    {
+      "src": "assets - home/.web/Media/DSC09771.webp",
       "type": "image"
     },
     {
@@ -13,7 +25,23 @@
       "type": "image"
     },
     {
+      "src": "assets - home/.web/Media/MAX STYLER-5.webp",
+      "type": "image"
+    },
+    {
+      "src": "assets - home/.web/Media/Offset2 full.webp",
+      "type": "image"
+    },
+    {
       "src": "assets - home/.web/Media/Pauly.webp",
+      "type": "image"
+    },
+    {
+      "src": "assets - home/.web/Media/SanHolo Exp-6.webp",
+      "type": "image"
+    },
+    {
+      "src": "assets - home/.web/Media/Teletech (58 of 68).webp",
       "type": "image"
     }
   ]

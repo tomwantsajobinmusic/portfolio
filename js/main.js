@@ -29,7 +29,7 @@
   const ASSETS_ROOT = 'assets - home';
 
   const IMAGE_DWELL_MS = 420;       // how long each photo shows during hover-cycle
-  const VIDEO_MAX_MS = 8000;        // safety cap in case a video won't fire 'ended'
+  const VIDEO_MAX_MS = 30000;        // safety cap in case a video won't fire 'ended' - not meant to cut real videos short
   const INTRO_WORD_MS = 380;        // how long each word shows during the intro cycle
 
   /* =========================================================

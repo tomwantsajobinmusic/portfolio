@@ -52,7 +52,7 @@
 
     el.querySelectorAll('.roll-digit').forEach((span, idx) => {
       const finalDigit = span.textContent;
-      const settleAfter = 9 + idx * 3; // left digits settle first, staggered like an odometer
+      const settleAfter = 14 + idx * 5; // left digits settle first, staggered like an odometer
       let tick = 0;
       const timer = window.setInterval(() => {
         tick++;
@@ -62,7 +62,7 @@
         } else {
           span.textContent = String(Math.floor(Math.random() * 10));
         }
-      }, 45);
+      }, 90);
     });
   }
 

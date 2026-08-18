@@ -63,12 +63,11 @@ img, video { max-width: 100%; display: block; }
 
 /* ---------- Intro ---------- */
 .intro {
-  max-width: 60ch;
-  margin-inline: auto;
   text-align: center;
 }
 .intro__title {
-  margin: 0 0 0.2em;
+  max-width: 60ch;
+  margin: 0 auto 0.2em;
   font-weight: 400;
   text-transform: uppercase;
   font-size: clamp(1.4rem, 6vw, 4rem); /* scales up to 64px on desktop */
@@ -78,11 +77,14 @@ img, video { max-width: 100%; display: block; }
 .tagline {
   margin: 0;
   text-transform: uppercase;
-  font-size: clamp(1.1rem, 2.6vw, 2rem); /* ~half the title size, was reading as too small */
+  /* 4.6vw keeps the longest state ("...job in talent management") a
+     comfortable single line at every viewport width - see nowrap below */
+  font-size: clamp(1rem, 4.6vw, 2rem);
   line-height: 1;
   letter-spacing: 0.02em;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   justify-content: center;
   gap: 0.35em;
   align-items: baseline;
@@ -195,7 +197,7 @@ img, video { max-width: 100%; display: block; }
   align-items: center;
   gap: 1rem;
   width: max-content;
-  animation: marquee-scroll 40s linear infinite;
+  animation: marquee-scroll 90s linear infinite;
 }
 .marquee:hover .marquee__track {
   animation-play-state: paused;

@@ -229,6 +229,7 @@ img, video { max-width: 100%; display: block; }
   flex-wrap: wrap;
   justify-content: center;
   gap: 1rem;
+  margin-bottom: 35px;
 }
 .placeholder-block {
   width: min(22vw, 260px);

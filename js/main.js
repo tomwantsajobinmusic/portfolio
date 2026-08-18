@@ -159,7 +159,15 @@
     return CATEGORY_FOLDERS[category];
   }
 
-  async function startHoverCycle(category) {
+  // `maxAdvances` + `onComplete` are used by the mobile tap-loader to stop
+  // after a fixed number of photos rather than running until stopHoverCycle()
+  // is called externally (which is how desktop hover still uses this - no
+  // limit, runs until mouseleave/blur). A wall-clock timer doesn't work for
+  // the mobile case: since advance() awaits each frame's real network load,
+  // a slow connection eats into a fixed time budget and shows fewer photos
+  // than intended. Counting actual shown frames is accurate regardless of
+  // connection speed.
+  async function startHoverCycle(category, { maxAdvances, onComplete } = {}) {
     const folder = folderForCategory(category);
     if (!folder) return;
     const token = ++hoverToken;
@@ -167,6 +175,7 @@
     if (token !== hoverToken || items.length === 0) return;
 
     let index = 0;
+    let shown = 0;
     // Kicked off ahead of time so it usually has a full dwell period to
     // finish; advance() still awaits it, so a slow load extends the dwell
     // instead of ever flashing an unloaded frame.
@@ -180,7 +189,13 @@
       const item = items[index % items.length];
       showItem(item);
       index++;
+      shown++;
       nextPreload = preloadItem(items[index % items.length]);
+
+      if (maxAdvances && shown >= maxAdvances) {
+        onComplete && onComplete();
+        return;
+      }
 
       if (item.type === 'video') {
         // showItem() just swapped activeLayer, so the live <video> lives there now.
@@ -243,19 +258,20 @@
      ========================================================= */
 
   const MOBILE_QUERY = '(max-width: 720px)';
-  const LOADER_DURATION_MS = 1800; // ~4 photos at the current dwell time
+  const LOADER_PHOTO_COUNT = 8; // how many photos the loader shows before navigating
 
   function isMobileViewport() {
     return window.matchMedia(MOBILE_QUERY).matches;
   }
 
   function navigateTo(link) {
-    // Always same-tab here, deliberately - this only ever runs after the
-    // loader's setTimeout delay, and mobile browsers silently block
-    // window.open() once it's no longer inside the direct click (it reads
-    // as an unrequested popup, not user-initiated). location.href has no
-    // such restriction. Desktop still opens Media in a new tab via the
-    // anchor's own target="_blank" - this function is never reached there.
+    // Always same-tab here, deliberately - this only ever runs once the
+    // loader finishes, well after the original click event, and mobile
+    // browsers silently block window.open() once it's outside the direct
+    // click (it reads as an unrequested popup, not user-initiated).
+    // location.href has no such restriction. Desktop still opens Media in
+    // a new tab via the anchor's own target="_blank" - this function is
+    // never reached there.
     window.location.href = link.href;
   }
 
@@ -273,14 +289,13 @@
           return;
         }
 
-        startHoverCycle(category);
-        window.setTimeout(() => {
-          // Same-tab links unload the page anyway, but target="_blank" links
-          // (Media) leave this tab alive - without this the cycle just kept
-          // running here forever after the new tab opened.
-          stopHoverCycle();
-          navigateTo(link);
-        }, LOADER_DURATION_MS);
+        startHoverCycle(category, {
+          maxAdvances: LOADER_PHOTO_COUNT,
+          onComplete: () => {
+            stopHoverCycle();
+            navigateTo(link);
+          },
+        });
       });
     });
   }

@@ -222,7 +222,15 @@ img, video { max-width: 100%; display: block; }
   aspect-ratio: 1 / 1;
   background: #232323;
   border-radius: 4px;
-  object-fit: cover; /* only applies once this class lands on a real <img> */
+}
+
+/* Real photos once a section has them - sized by height only (like the
+   marquee) so each keeps its natural aspect ratio instead of being
+   cropped into the placeholder's square box. */
+.photo-tile {
+  height: clamp(160px, 24vw, 280px);
+  width: auto;
+  border-radius: 4px;
 }
 
 /* Quick stats + digit roll-up */

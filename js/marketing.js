@@ -63,7 +63,7 @@
     container.removeAttribute('aria-hidden');
     items.forEach((item) => {
       const img = document.createElement('img');
-      img.className = 'placeholder-block';
+      img.className = 'photo-tile';
       img.src = encodeURI(item.src);
       img.alt = '';
       container.appendChild(img);

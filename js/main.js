@@ -93,6 +93,20 @@
     }
   }
 
+  // Resolves once an image is actually decoded and ready to paint, so the
+  // crossfade never reveals a layer before its image has loaded (that gap
+  // was showing as a flash of the black base background between photos).
+  // Videos resolve immediately - they're handled separately in advance().
+  function preloadItem(item) {
+    return new Promise((resolve) => {
+      if (item.type === 'video') { resolve(); return; }
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve(); // don't block the cycle on one bad file
+      img.src = encodeURI(item.src);
+    });
+  }
+
   // Crossfades to a new item, swapping which of the two layers is "active".
   function showItem(item) {
     paintLayer(idleLayer, item);
@@ -153,12 +167,20 @@
     if (token !== hoverToken || items.length === 0) return;
 
     let index = 0;
+    // Kicked off ahead of time so it usually has a full dwell period to
+    // finish; advance() still awaits it, so a slow load extends the dwell
+    // instead of ever flashing an unloaded frame.
+    let nextPreload = preloadItem(items[0]);
 
-    const advance = () => {
+    const advance = async () => {
       if (token !== hoverToken) return;
+      await nextPreload;
+      if (token !== hoverToken) return;
+
       const item = items[index % items.length];
       showItem(item);
       index++;
+      nextPreload = preloadItem(items[index % items.length]);
 
       if (item.type === 'video') {
         // showItem() just swapped activeLayer, so the live <video> lives there now.
@@ -202,10 +224,13 @@
   function initHoverCycling() {
     document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
       const category = link.dataset.category;
-      link.addEventListener('mouseenter', () => startHoverCycle(category));
-      link.addEventListener('focus', () => startHoverCycle(category));
-      link.addEventListener('mouseleave', stopHoverCycle);
-      link.addEventListener('blur', stopHoverCycle);
+      // Touch devices fire synthetic mouseenter/focus on tap too, which was
+      // racing the mobile tap-loader below and restarting the cycle mid-play.
+      // These are desktop-only now; behavior at desktop widths is unchanged.
+      link.addEventListener('mouseenter', () => { if (!isMobileViewport()) startHoverCycle(category); });
+      link.addEventListener('focus', () => { if (!isMobileViewport()) startHoverCycle(category); });
+      link.addEventListener('mouseleave', () => { if (!isMobileViewport()) stopHoverCycle(); });
+      link.addEventListener('blur', () => { if (!isMobileViewport()) stopHoverCycle(); });
     });
   }
 
@@ -225,11 +250,13 @@
   }
 
   function navigateTo(link) {
-    if (link.target === '_blank') {
-      window.open(link.href, '_blank', 'noopener,noreferrer');
-    } else {
-      window.location.href = link.href;
-    }
+    // Always same-tab here, deliberately - this only ever runs after the
+    // loader's setTimeout delay, and mobile browsers silently block
+    // window.open() once it's no longer inside the direct click (it reads
+    // as an unrequested popup, not user-initiated). location.href has no
+    // such restriction. Desktop still opens Media in a new tab via the
+    // anchor's own target="_blank" - this function is never reached there.
+    window.location.href = link.href;
   }
 
   function initMobileTapLoader() {
@@ -247,7 +274,13 @@
         }
 
         startHoverCycle(category);
-        window.setTimeout(() => navigateTo(link), LOADER_DURATION_MS);
+        window.setTimeout(() => {
+          // Same-tab links unload the page anyway, but target="_blank" links
+          // (Media) leave this tab alive - without this the cycle just kept
+          // running here forever after the new tab opened.
+          stopHoverCycle();
+          navigateTo(link);
+        }, LOADER_DURATION_MS);
       });
     });
   }

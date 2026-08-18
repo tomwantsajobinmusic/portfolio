@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thomas — Music Industry Portfolio</title>
+<meta name="description" content="Thomas is looking for a job in music. Media, marketing and talent management work.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<main class="hero" id="hero">
+
+  <!-- Background media layer: crossfading image/video cycler -->
+  <div class="bg-media" id="bgMedia" aria-hidden="true">
+    <div class="bg-layer bg-layer--a" id="bgLayerA"></div>
+    <div class="bg-layer bg-layer--b" id="bgLayerB"></div>
+    <div class="bg-overlay"></div>
+  </div>
+
+  <div class="hero-content">
+
+    <div class="intro">
+      <h1 class="intro__title">Hey, my name's Thomas</h1>
+      <p class="tagline">
+        <span class="tagline__prefix">and I'm looking for a job in</span>
+        <span class="tagline__word" id="taglineWord" aria-live="polite">music</span>
+      </p>
+    </div>
+
+    <nav class="scopes" aria-label="Areas of work">
+      <ul class="scopes__list">
+        <li class="scopes__item scopes__item--media">
+          <a href="media.html" data-category="media">Media</a>
+        </li>
+        <li class="scopes__item scopes__item--marketing">
+          <a href="marketing.html" data-category="marketing">Marketing</a>
+        </li>
+        <li class="scopes__item scopes__item--talent">
+          <a href="talent-management.html" data-category="talent-management">Talent Management</a>
+        </li>
+        <li class="scopes__item scopes__item--about">
+          <a href="about-contact.html" data-category="about-contact">About/Contact</a>
+        </li>
+      </ul>
+    </nav>
+
+  </div>
+</main>
+
+<script src="js/main.js" defer></script>
+</body>
+</html>

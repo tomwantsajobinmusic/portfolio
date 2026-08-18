@@ -1,0 +1,17 @@
+{
+  "name": "tomwantsajobinmusic",
+  "version": "1.0.0",
+  "description": "Portfolio homepage: index.html + css/styles.css + js/main.js.",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-assets.js",
+    "serve": "npx --yes serve . -l 3000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "sharp": "^0.35.3"
+  }
+}

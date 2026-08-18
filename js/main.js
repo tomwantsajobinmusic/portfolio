@@ -21,9 +21,9 @@
   const ROOT_SCOPE = '';
   const ASSETS_ROOT = 'assets - home';
 
-  const IMAGE_DWELL_MS = 1500;      // how long each photo shows during hover-cycle
+  const IMAGE_DWELL_MS = 800;       // how long each photo shows during hover-cycle
   const VIDEO_MAX_MS = 8000;        // safety cap in case a video won't fire 'ended'
-  const INTRO_WORD_MS = 650;        // how long each word shows during the intro cycle
+  const INTRO_WORD_MS = 380;        // how long each word shows during the intro cycle
   const INTRO_STORAGE_KEY = 'tw_intro_played';
 
   /* =========================================================
@@ -61,7 +61,7 @@
         wordEl.innerHTML = `<span class="tagline__word-inner">${sequence[i]}</span>`;
         wordEl.classList.remove('is-cycling');
         window.setTimeout(step, INTRO_WORD_MS);
-      }, 260);
+      }, 230); // matches the .tagline__word-inner transition duration in css
     };
 
     window.setTimeout(step, INTRO_WORD_MS);

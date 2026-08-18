@@ -15,6 +15,13 @@
     'about-contact': 'About_Contact',
   };
 
+  // Mobile-only overrides: photos cropped specifically for narrow viewports.
+  // Any category without an entry here just falls back to CATEGORY_FOLDERS,
+  // same as desktop.
+  const MOBILE_CATEGORY_FOLDERS = {
+    media: 'Media - Mobile',
+  };
+
   // The root "assets - home" folder itself: whatever's dropped there
   // (currently the festival hero shot) is the default background, resolved
   // via the same root-level manifest.json build-assets.js writes.
@@ -133,8 +140,13 @@
     showItem(defaultItem);
   }
 
+  function folderForCategory(category) {
+    if (isMobileViewport() && MOBILE_CATEGORY_FOLDERS[category]) return MOBILE_CATEGORY_FOLDERS[category];
+    return CATEGORY_FOLDERS[category];
+  }
+
   async function startHoverCycle(category) {
-    const folder = CATEGORY_FOLDERS[category];
+    const folder = folderForCategory(category);
     if (!folder) return;
     const token = ++hoverToken;
     const items = await loadManifest(folder);
@@ -227,7 +239,7 @@
         if (!isMobileViewport()) return; // desktop keeps its normal hover behavior
 
         e.preventDefault();
-        const folder = CATEGORY_FOLDERS[category];
+        const folder = folderForCategory(category);
         const items = folder ? await loadManifest(folder) : [];
         if (items.length === 0) {
           navigateTo(link); // nothing to show yet, don't make them wait

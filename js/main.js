@@ -198,12 +198,56 @@
   }
 
   /* =========================================================
+     MOBILE TAP LOADER — touch devices don't get real hover, so
+     tapping a nav item plays the image cycle briefly (like a
+     loading screen) before navigating. Desktop is untouched:
+     this only ever fires under the same breakpoint the rest of
+     the site treats as "mobile".
+     ========================================================= */
+
+  const MOBILE_QUERY = '(max-width: 720px)';
+  const LOADER_DURATION_MS = 1800; // ~4 photos at the current dwell time
+
+  function isMobileViewport() {
+    return window.matchMedia(MOBILE_QUERY).matches;
+  }
+
+  function navigateTo(link) {
+    if (link.target === '_blank') {
+      window.open(link.href, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.href = link.href;
+    }
+  }
+
+  function initMobileTapLoader() {
+    document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
+      const category = link.dataset.category;
+      link.addEventListener('click', async (e) => {
+        if (!isMobileViewport()) return; // desktop keeps its normal hover behavior
+
+        e.preventDefault();
+        const folder = CATEGORY_FOLDERS[category];
+        const items = folder ? await loadManifest(folder) : [];
+        if (items.length === 0) {
+          navigateTo(link); // nothing to show yet, don't make them wait
+          return;
+        }
+
+        startHoverCycle(category);
+        window.setTimeout(() => navigateTo(link), LOADER_DURATION_MS);
+      });
+    });
+  }
+
+  /* =========================================================
      INIT
      ========================================================= */
 
   document.addEventListener('DOMContentLoaded', () => {
     runIntroCycle();
     initHoverCycling();
+    initMobileTapLoader();
     resolveDefaultBackground();
   });
 })();

@@ -267,6 +267,11 @@ img, video { max-width: 100%; display: block; }
   .scopes__item a { display: block; }
 
   .placeholder-block { width: min(40vw, 200px); }
+
+  /* Touch has no real hover, and tapping can leave :hover "stuck" on until
+     the next tap elsewhere - which pauses the marquee and keeps it paused.
+     Below the mobile breakpoint it should just always be running. */
+  .marquee:hover .marquee__track { animation-play-state: running; }
 }
 
 @media (prefers-reduced-motion: reduce) {

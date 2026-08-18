@@ -130,14 +130,144 @@ img, video { max-width: 100%; display: block; }
   color: #ff5c1a;
 }
 
+/* ---------- Simple content pages (Marketing, etc.) ---------- */
+.back-link {
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 10;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  opacity: 0.65;
+  transition: color 150ms ease, opacity 150ms ease;
+}
+.back-link:hover,
+.back-link:focus-visible {
+  color: #ff5c1a;
+  opacity: 1;
+}
+
+.page {
+  min-height: 100vh;
+  background: #050505;
+  color: #fff;
+  padding: clamp(4rem, 10vw, 6rem) 1.5rem 6rem;
+}
+
+.page-title {
+  text-align: center;
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  letter-spacing: 0.02em;
+  margin: 0 0 3.5rem;
+}
+
+.content-section {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: clamp(3rem, 8vw, 5rem);
+  text-align: center;
+}
+
+.section-heading {
+  display: inline-block;
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+  margin: 0 0 2rem;
+}
+
+/* Paid Media marquee — loops by duplicating the track and scrolling exactly -50% */
+.marquee {
+  overflow: hidden;
+  width: 100%;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.marquee__track {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: max-content;
+  animation: marquee-scroll 40s linear infinite;
+}
+.marquee:hover .marquee__track {
+  animation-play-state: paused;
+}
+.marquee__track img {
+  height: clamp(140px, 22vw, 260px);
+  width: auto;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Grey placeholders for sections whose real photos aren't compiled yet */
+.placeholder-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+.placeholder-block {
+  width: min(22vw, 260px);
+  aspect-ratio: 1 / 1;
+  background: #232323;
+  border-radius: 4px;
+}
+
+/* Quick stats + digit roll-up */
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(2rem, 6vw, 5rem);
+  margin-top: 3rem;
+}
+.stat__value {
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat__label {
+  margin-top: 0.6em;
+  text-transform: uppercase;
+  font-size: clamp(0.7rem, 1.4vw, 0.9rem);
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.text-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.text-list li {
+  text-transform: uppercase;
+  font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+  letter-spacing: 0.03em;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
   .hero-content { justify-content: flex-start; gap: 3rem; }
   .scopes { align-self: stretch; }
   .scopes__list { align-items: flex-start; }
   .scopes__item a { display: block; }
+
+  .placeholder-block { width: min(40vw, 200px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .bg-layer, .tagline__word-inner { transition: none; }
+  .marquee__track { animation: none; }
 }

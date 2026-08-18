@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Two jobs, run together whenever you add/remove/change files in "assets - home":
+ * Two jobs, run together whenever you add/remove/change files in an assets
+ * folder ("assets - home", "assets - marketing", ...):
  *
  *  1. Compress photos. Full-res originals stay exactly where you put them —
  *     this writes a resized/re-encoded WebP copy into a parallel ".web"
@@ -18,7 +19,8 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-const ASSETS_ROOT = path.join(__dirname, '..', 'assets - home');
+const PROJECT_ROOT = path.join(__dirname, '..');
+const ASSET_ROOTS = ['assets - home', 'assets - marketing'];
 const WEB_DIR = '.web';
 const MAX_WIDTH = 2560;   // plenty for a full-bleed background, even on big/hi-dpi screens
 const WEBP_QUALITY = 78;
@@ -33,19 +35,18 @@ function typeForFile(name) {
   return null;
 }
 
-// Folders directly under the assets root that we process: '' is the root
-// itself (for the default hero background), plus every subdirectory except
-// the .web output cache.
-function listScopes() {
-  const entries = fs.readdirSync(ASSETS_ROOT, { withFileTypes: true });
+// Folders directly under an assets root that we process: '' is the root
+// itself, plus every subdirectory except the .web output cache.
+function listScopes(assetsRoot) {
+  const entries = fs.readdirSync(assetsRoot, { withFileTypes: true });
   const subfolders = entries
     .filter((e) => e.isDirectory() && e.name !== WEB_DIR)
     .map((e) => e.name);
   return ['', ...subfolders];
 }
 
-function filesInScope(scope) {
-  const dir = path.join(ASSETS_ROOT, scope || '.');
+function filesInScope(assetsRoot, scope) {
+  const dir = path.join(assetsRoot, scope || '.');
   return fs
     .readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isFile())
@@ -55,9 +56,9 @@ function filesInScope(scope) {
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
-async function compressImage(scope, file) {
-  const srcPath = path.join(ASSETS_ROOT, scope || '.', file);
-  const outDir = path.join(ASSETS_ROOT, WEB_DIR, scope || '.');
+async function compressImage(assetsRoot, scope, file) {
+  const srcPath = path.join(assetsRoot, scope || '.', file);
+  const outDir = path.join(assetsRoot, WEB_DIR, scope || '.');
   const outName = path.basename(file, path.extname(file)) + '.webp';
   const outPath = path.join(outDir, outName);
 
@@ -77,41 +78,40 @@ async function compressImage(scope, file) {
   return { outName, skipped: false };
 }
 
-async function buildScope(scope) {
-  const files = filesInScope(scope);
+async function buildScope(assetsRootName, assetsRoot, scope) {
+  const files = filesInScope(assetsRoot, scope);
   const items = [];
   let compressed = 0;
 
   for (const file of files) {
     const type = typeForFile(file);
     if (type === 'image') {
-      const { outName, skipped } = await compressImage(scope, file);
+      const { outName, skipped } = await compressImage(assetsRoot, scope, file);
       if (!skipped) compressed++;
-      const webPath = path.posix.join('assets - home', WEB_DIR, scope || '.', outName);
+      const webPath = path.posix.join(assetsRootName, WEB_DIR, scope || '.', outName);
       items.push({ src: webPath, type: 'image' });
     } else {
       // No video transcoding pipeline yet — reference the original file as-is.
-      const rawPath = path.posix.join('assets - home', scope || '.', file);
+      const rawPath = path.posix.join(assetsRootName, scope || '.', file);
       items.push({ src: rawPath, type: 'video' });
     }
   }
 
-  const manifestPath = path.join(ASSETS_ROOT, scope || '.', 'manifest.json');
+  const manifestPath = path.join(assetsRoot, scope || '.', 'manifest.json');
   fs.writeFileSync(manifestPath, JSON.stringify({ items }, null, 2) + '\n');
 
   const label = scope || '(root)';
-  console.log(`  ${label}: ${items.length} item(s), ${compressed} compressed -> ${path.relative(process.cwd(), manifestPath)}`);
+  console.log(`  ${assetsRootName}/${label}: ${items.length} item(s), ${compressed} compressed -> ${path.relative(process.cwd(), manifestPath)}`);
 }
 
 async function main() {
-  if (!fs.existsSync(ASSETS_ROOT)) {
-    console.error(`Could not find "${ASSETS_ROOT}".`);
-    process.exit(1);
-  }
-
   console.log('Building assets...');
-  for (const scope of listScopes()) {
-    await buildScope(scope);
+  for (const assetsRootName of ASSET_ROOTS) {
+    const assetsRoot = path.join(PROJECT_ROOT, assetsRootName);
+    if (!fs.existsSync(assetsRoot)) continue; // skip roots that don't exist yet
+    for (const scope of listScopes(assetsRoot)) {
+      await buildScope(assetsRootName, assetsRoot, scope);
+    }
   }
   console.log('Done.');
 }

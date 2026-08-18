@@ -3,12 +3,16 @@
  * Two jobs, run together whenever you add/remove/change files in an assets
  * folder ("assets - home", "assets - marketing", ...):
  *
- *  1. Compress photos. Full-res originals stay exactly where you put them —
- *     this writes a resized/re-encoded WebP copy into a parallel ".web"
+ *  1. Compress photos and videos. Full-res originals stay exactly where you
+ *     put them — this writes a re-encoded copy into a parallel ".web"
  *     folder, which is what the site actually loads (originals are usually
- *     several MB straight off a camera; a hero-sized WebP is a fraction of
- *     that, so the page stays snappy). Skips files whose derivative is
- *     already newer than the source, so re-runs are fast.
+ *     huge straight off a camera; the derivative is a fraction of that, so
+ *     the page stays snappy). Skips files whose derivative is already newer
+ *     than the source, so re-runs are fast.
+ *     - Photos: resized, re-encoded as WebP.
+ *     - Videos: re-encoded H.264, CRF-based so quality stays high rather
+ *       than hitting a low fixed bitrate, audio stripped (every video on
+ *       the site plays muted, so it's dead weight).
  *
  *  2. Write manifest.json in each folder (root included) listing what's in
  *     it, since a static site can't list a folder's contents on its own.
@@ -18,12 +22,24 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const ffmpegPath = require('ffmpeg-static');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 const ASSET_ROOTS = ['assets - home', 'assets - marketing'];
 const WEB_DIR = '.web';
 const MAX_WIDTH = 2560;   // plenty for a full-bleed background, even on big/hi-dpi screens
 const WEBP_QUALITY = 78;
+
+// CRF-based, not a fixed low bitrate - keeps quality high and just lets
+// filesize follow scene complexity. maxrate is a safety ceiling, not the
+// target. Bump CRF a couple points (e.g. 22-23) if a video comes out
+// larger than you'd like; quality only degrades noticeably past ~24-25.
+const VIDEO_CRF = 20;
+const VIDEO_MAXRATE = '8M';
+const VIDEO_BUFSIZE = '16M';
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const VIDEO_EXT = new Set(['.mp4', '.webm', '.mov']);
@@ -78,6 +94,37 @@ async function compressImage(assetsRoot, scope, file) {
   return { outName, skipped: false };
 }
 
+async function compressVideo(assetsRoot, scope, file) {
+  const srcPath = path.join(assetsRoot, scope || '.', file);
+  const outDir = path.join(assetsRoot, WEB_DIR, scope || '.');
+  const outName = path.basename(file, path.extname(file)) + '.mp4';
+  const outPath = path.join(outDir, outName);
+
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const srcStat = fs.statSync(srcPath);
+  if (fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= srcStat.mtimeMs) {
+    return { outName, skipped: true };
+  }
+
+  await execFileAsync(ffmpegPath, [
+    '-y',
+    '-i', srcPath,
+    '-an', // every video on the site plays muted - audio is dead weight
+    '-c:v', 'libx264',
+    '-preset', 'medium',
+    '-crf', String(VIDEO_CRF),
+    '-maxrate', VIDEO_MAXRATE,
+    '-bufsize', VIDEO_BUFSIZE,
+    '-pix_fmt', 'yuv420p',
+    '-movflags', '+faststart', // moov atom up front so it can start playing before it's fully downloaded
+    '-loglevel', 'error',
+    outPath,
+  ], { maxBuffer: 1024 * 1024 * 20 });
+
+  return { outName, skipped: false };
+}
+
 async function buildScope(assetsRootName, assetsRoot, scope) {
   const files = filesInScope(assetsRoot, scope);
   const items = [];
@@ -91,9 +138,10 @@ async function buildScope(assetsRootName, assetsRoot, scope) {
       const webPath = path.posix.join(assetsRootName, WEB_DIR, scope || '.', outName);
       items.push({ src: webPath, type: 'image' });
     } else {
-      // No video transcoding pipeline yet — reference the original file as-is.
-      const rawPath = path.posix.join(assetsRootName, scope || '.', file);
-      items.push({ src: rawPath, type: 'video' });
+      const { outName, skipped } = await compressVideo(assetsRoot, scope, file);
+      if (!skipped) compressed++;
+      const webPath = path.posix.join(assetsRootName, WEB_DIR, scope || '.', outName);
+      items.push({ src: webPath, type: 'video' });
     }
   }
 

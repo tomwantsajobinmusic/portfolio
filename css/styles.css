@@ -92,6 +92,10 @@ img, video { max-width: 100%; display: block; }
   display: inline-block;
   overflow: hidden;
   vertical-align: bottom;
+  transition: color 200ms ease;
+}
+.tagline__word.is-flip-color {
+  color: #ff5c1a;
 }
 .tagline__word-inner {
   display: inline-block;

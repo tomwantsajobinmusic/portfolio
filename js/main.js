@@ -24,10 +24,9 @@
   const IMAGE_DWELL_MS = 800;       // how long each photo shows during hover-cycle
   const VIDEO_MAX_MS = 8000;        // safety cap in case a video won't fire 'ended'
   const INTRO_WORD_MS = 380;        // how long each word shows during the intro cycle
-  const INTRO_STORAGE_KEY = 'tw_intro_played';
 
   /* =========================================================
-     INTRO TAGLINE CYCLE (first load only)
+     INTRO TAGLINE CYCLE (plays on every load)
      ========================================================= */
 
   function runIntroCycle() {
@@ -37,29 +36,19 @@
     const finalWord = wordEl.textContent.trim() || 'music';
     const sequence = ['media', 'marketing', 'talent management', finalWord];
 
-    // Already played this session (or the tab doesn't support sessionStorage) -> skip straight to final state.
-    let alreadyPlayed = true;
-    try {
-      alreadyPlayed = sessionStorage.getItem(INTRO_STORAGE_KEY) === '1';
-    } catch (e) {
-      alreadyPlayed = true;
-    }
-
     wordEl.innerHTML = `<span class="tagline__word-inner">${finalWord}</span>`;
-    if (alreadyPlayed) return;
+    wordEl.classList.add('is-flip-color'); // orange while flipping through the roles
 
     let i = -1;
 
     const step = () => {
       i++;
-      if (i >= sequence.length) {
-        try { sessionStorage.setItem(INTRO_STORAGE_KEY, '1'); } catch (e) { /* ignore */ }
-        return;
-      }
+      if (i >= sequence.length) return; // done, settled on finalWord
       wordEl.classList.add('is-cycling');
       window.setTimeout(() => {
         wordEl.innerHTML = `<span class="tagline__word-inner">${sequence[i]}</span>`;
         wordEl.classList.remove('is-cycling');
+        if (i === sequence.length - 1) wordEl.classList.remove('is-flip-color'); // back to white on the final word
         window.setTimeout(step, INTRO_WORD_MS);
       }, 230); // matches the .tagline__word-inner transition duration in css
     };

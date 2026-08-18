@@ -34,7 +34,7 @@ img, video { max-width: 100%; display: block; }
   background-size: cover;
   background-repeat: no-repeat;
   opacity: 0;
-  transition: opacity 320ms ease;
+  transition: opacity 130ms ease-out;
 }
 .bg-layer.is-visible { opacity: 1; }
 .bg-layer video {

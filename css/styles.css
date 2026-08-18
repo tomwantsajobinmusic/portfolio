@@ -164,25 +164,38 @@ img, video { max-width: 100%; display: block; }
   text-transform: uppercase;
   font-size: clamp(2.5rem, 8vw, 5rem);
   letter-spacing: 0.02em;
-  margin: 0 0 3.5rem;
+  margin: 0 0 35px;
 }
 
 .content-section {
   max-width: 1400px;
   margin: 0 auto;
-  padding-bottom: clamp(3rem, 8vw, 5rem);
+  padding-bottom: 65px;
   text-align: center;
+}
+/* Without this, whatever happens to be last inside a section (.media,
+   .text-list, ...) adds its own bottom margin on top of the section's
+   65px padding, so the real gap comes out larger than 65px. */
+.content-section > *:last-child {
+  margin-bottom: 0;
 }
 
 .section-heading {
-  display: inline-block;
+  /* block + fit-content + auto margins, not inline-block: inline-block
+     sits in the same inline "line" as an adjacent inline-block sibling
+     (.media) and gets centered as a combined unit with it, which is what
+     was shoving headings off to one side instead of each centering on
+     its own line. This still shrink-wraps to the text (so the underline
+     hugs it) without flowing inline. */
+  display: block;
+  width: fit-content;
+  margin: 0 auto 35px;
   font-weight: 400;
   text-transform: uppercase;
   font-size: clamp(1.1rem, 2.4vw, 1.6rem);
   letter-spacing: 0.04em;
   text-decoration: underline;
   text-underline-offset: 0.3em;
-  margin: 0 0 2rem;
 }
 
 /* Paid Media marquee — loops by duplicating the track and scrolling exactly -50% */
@@ -239,7 +252,7 @@ img, video { max-width: 100%; display: block; }
   flex-wrap: wrap;
   justify-content: center;
   gap: clamp(2rem, 6vw, 5rem);
-  margin-top: 3rem;
+  margin-top: 35px;
 }
 .stat__value {
   font-size: clamp(2.2rem, 6vw, 4rem);
@@ -258,7 +271,7 @@ img, video { max-width: 100%; display: block; }
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin: 0 0 2.5rem;
+  margin: 0 0 35px;
 }
 .text-list li {
   text-transform: uppercase;
@@ -275,7 +288,7 @@ img, video { max-width: 100%; display: block; }
   text-transform: uppercase;
   font-size: clamp(1.8rem, 5vw, 3rem);
   letter-spacing: 0.02em;
-  margin: 0 0 1rem;
+  margin: 0 0 35px;
 }
 
 /* Same size as .section-heading but no underline - for a label within a
@@ -286,14 +299,17 @@ img, video { max-width: 100%; display: block; }
   text-transform: uppercase;
   font-size: clamp(1.1rem, 2.4vw, 1.6rem);
   letter-spacing: 0.04em;
-  margin: 1rem 0 1.5rem;
+  margin: 35px 0;
 }
 
 /* A single media block + small credit line, shrink-wrapped so the credit
-   right-aligns against the block's own edge rather than the full page. */
+   right-aligns against the block's own edge rather than the full page.
+   Block + fit-content + auto margins, not inline-block - see the note on
+   .section-heading above for why (same bug, same fix). */
 .media {
-  display: inline-block;
-  margin: 0 0 2.5rem;
+  display: block;
+  width: fit-content;
+  margin: 0 auto 35px;
 }
 .media-credit {
   margin: 0.5em 0 0;

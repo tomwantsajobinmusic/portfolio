@@ -36,6 +36,8 @@
      INTRO TAGLINE CYCLE (plays on every load)
      ========================================================= */
 
+  let introActive = false; // true for the duration of the load-time cycle; hover shouldn't fight it for the same element
+
   function runIntroCycle() {
     const wordEl = document.getElementById('taglineWord');
     if (!wordEl) return;
@@ -45,12 +47,13 @@
 
     wordEl.innerHTML = `<span class="tagline__word-inner">${finalWord}</span>`;
     wordEl.classList.add('is-flip-color'); // orange while flipping through the roles
+    introActive = true;
 
     let i = -1;
 
     const step = () => {
       i++;
-      if (i >= sequence.length) return; // done, settled on finalWord
+      if (i >= sequence.length) { introActive = false; return; } // done, settled on finalWord
       wordEl.classList.add('is-cycling');
       window.setTimeout(() => {
         wordEl.innerHTML = `<span class="tagline__word-inner">${sequence[i]}</span>`;
@@ -61,6 +64,41 @@
     };
 
     window.setTimeout(step, INTRO_WORD_MS);
+  }
+
+  /* =========================================================
+     TAGLINE HOVER SYNC — desktop only: hovering a nav item swaps
+     the tagline word to match it, same flip transition as the
+     intro cycle, reverting to "music" on mouseleave.
+     ========================================================= */
+
+  // No entry for about-contact - "looking for a job in about/contact"
+  // doesn't read as a real phrase, so hovering it just leaves the
+  // tagline alone (mouseleave from whatever was hovered before still
+  // resets it back to "music" as normal).
+  const TAGLINE_WORDS = {
+    media: 'media',
+    marketing: 'marketing',
+    'talent-management': 'talent management',
+  };
+
+  let taglineToken = 0; // invalidates a pending swap if another one starts before it lands
+
+  function setTaglineWord(word, isFlipColor) {
+    if (introActive) return; // let the load-time cycle own the element until it settles
+    const wordEl = document.getElementById('taglineWord');
+    if (!wordEl) return;
+    const inner = wordEl.querySelector('.tagline__word-inner');
+    if (inner && inner.textContent === word) return;
+
+    const token = ++taglineToken;
+    wordEl.classList.add('is-cycling');
+    window.setTimeout(() => {
+      if (token !== taglineToken) return; // superseded by a newer hover before this landed
+      wordEl.innerHTML = `<span class="tagline__word-inner">${word}</span>`;
+      wordEl.classList.remove('is-cycling');
+      wordEl.classList.toggle('is-flip-color', isFlipColor);
+    }, 230);
   }
 
   /* =========================================================
@@ -239,13 +277,30 @@
   function initHoverCycling() {
     document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
       const category = link.dataset.category;
+      const word = TAGLINE_WORDS[category];
       // Touch devices fire synthetic mouseenter/focus on tap too, which was
       // racing the mobile tap-loader below and restarting the cycle mid-play.
       // These are desktop-only now; behavior at desktop widths is unchanged.
-      link.addEventListener('mouseenter', () => { if (!isMobileViewport()) startHoverCycle(category); });
-      link.addEventListener('focus', () => { if (!isMobileViewport()) startHoverCycle(category); });
-      link.addEventListener('mouseleave', () => { if (!isMobileViewport()) stopHoverCycle(); });
-      link.addEventListener('blur', () => { if (!isMobileViewport()) stopHoverCycle(); });
+      link.addEventListener('mouseenter', () => {
+        if (isMobileViewport()) return;
+        startHoverCycle(category);
+        if (word) setTaglineWord(word, true);
+      });
+      link.addEventListener('focus', () => {
+        if (isMobileViewport()) return;
+        startHoverCycle(category);
+        if (word) setTaglineWord(word, true);
+      });
+      link.addEventListener('mouseleave', () => {
+        if (isMobileViewport()) return;
+        stopHoverCycle();
+        setTaglineWord('music', false);
+      });
+      link.addEventListener('blur', () => {
+        if (isMobileViewport()) return;
+        stopHoverCycle();
+        setTaglineWord('music', false);
+      });
     });
   }
 

@@ -39,6 +39,38 @@
   }
 
   /* =========================================================
+     PHOTO GRIDS — swaps a section's grey placeholder blocks for
+     real photos once they exist, keyed off that folder's manifest
+     ========================================================= */
+
+  async function initPhotoGrid(containerId, manifestPath) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let items = [];
+    try {
+      const res = await fetch(encodeURI(manifestPath), { cache: 'no-store' });
+      if (!res.ok) throw new Error(`manifest not found: ${manifestPath}`);
+      const data = await res.json();
+      items = Array.isArray(data.items) ? data.items : [];
+    } catch (err) {
+      console.warn(`[marketing] Could not load manifest "${manifestPath}".`, err);
+      return;
+    }
+    if (items.length === 0) return; // keep the grey placeholders until real photos exist
+
+    container.innerHTML = '';
+    container.removeAttribute('aria-hidden');
+    items.forEach((item) => {
+      const img = document.createElement('img');
+      img.className = 'placeholder-block';
+      img.src = encodeURI(item.src);
+      img.alt = '';
+      container.appendChild(img);
+    });
+  }
+
+  /* =========================================================
      STAT ROLL-UP — digits spin through random values and land
      on the real number once the stat scrolls into view
      ========================================================= */
@@ -92,5 +124,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     initMarquee();
     initStatRollups();
+    initPhotoGrid('liveNationGrid', 'assets - marketing/LN Campaigns/manifest.json');
   });
 })();

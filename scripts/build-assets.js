@@ -28,7 +28,7 @@ const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 
 const PROJECT_ROOT = path.join(__dirname, '..');
-const ASSET_ROOTS = ['assets - home', 'assets - marketing'];
+const ASSET_ROOTS = ['assets - home', 'assets - marketing', 'assets - management'];
 const WEB_DIR = '.web';
 const MAX_WIDTH = 2560;   // plenty for a full-bleed background, even on big/hi-dpi screens
 const WEBP_QUALITY = 78;

@@ -325,6 +325,16 @@ img, video { max-width: 100%; display: block; }
   aspect-ratio: 16 / 7;
 }
 
+/* A real video dropped into a .media figure - sized like
+   .placeholder-block--wide but without forcing an aspect-ratio, so it
+   plays at its own native proportions instead of being stretched/cropped
+   to the placeholder's banner shape. */
+.media-video {
+  display: block;
+  width: min(70vw, 640px);
+  border-radius: 4px;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
   .hero-content { justify-content: flex-start; gap: 3rem; }
@@ -334,6 +344,7 @@ img, video { max-width: 100%; display: block; }
 
   .placeholder-block { width: min(40vw, 200px); }
   .placeholder-block--wide { width: min(85vw, 400px); }
+  .media-video { width: min(85vw, 400px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

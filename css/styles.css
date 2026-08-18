@@ -2,7 +2,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: 'Anton', 'Arial Narrow', sans-serif;
+  font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
   background: #050505;
   color: #fff;
   -webkit-font-smoothing: antialiased;
@@ -64,12 +64,14 @@ img, video { max-width: 100%; display: block; }
 /* ---------- Intro ---------- */
 .intro {
   max-width: 60ch;
+  margin-inline: auto;
+  text-align: center;
 }
 .intro__title {
   margin: 0 0 0.35em;
   font-weight: 400;
   text-transform: uppercase;
-  font-size: clamp(1.5rem, 3.4vw, 2.6rem);
+  font-size: clamp(1.4rem, 6vw, 4rem); /* scales up to 64px on desktop */
   letter-spacing: 0.01em;
 }
 .tagline {
@@ -79,6 +81,7 @@ img, video { max-width: 100%; display: block; }
   letter-spacing: 0.02em;
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.4em;
   align-items: baseline;
 }
@@ -106,12 +109,13 @@ img, video { max-width: 100%; display: block; }
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.02em;
+  gap: 0.04em;
 }
-.scopes__item { line-height: 0.92; }
+.scopes__item { line-height: 0.9; }
 .scopes__item a {
   display: inline-block;
   text-transform: uppercase;
+  font-size: clamp(2rem, 11vw, 8rem); /* scales up to 128px on desktop, same for every item */
   transition: color 250ms ease, transform 250ms ease;
   will-change: transform;
 }
@@ -120,23 +124,12 @@ img, video { max-width: 100%; display: block; }
   color: #ff5c1a;
 }
 
-.scopes__item--media a     { font-size: clamp(1.6rem, 4.4vw, 3rem); }
-.scopes__item--marketing a { font-size: clamp(2rem, 5.6vw, 4rem); }
-.scopes__item--talent a    { font-size: clamp(2.2rem, 6.2vw, 4.6rem); }
-.scopes__item--about a     { font-size: clamp(2.4rem, 6.8vw, 5.2rem); }
-
-.scopes__item--media     { margin-right: 0.05em; }
-.scopes__item--marketing { margin-right: 0; }
-.scopes__item--talent    { margin-right: 0.02em; margin-top: 0.15em; }
-.scopes__item--about     { margin-top: 0.2em; }
-
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
   .hero-content { justify-content: flex-start; gap: 3rem; }
   .scopes { align-self: stretch; }
   .scopes__list { align-items: flex-start; }
   .scopes__item a { display: block; }
-  .intro__title { font-size: clamp(1.6rem, 6vw, 2.2rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {

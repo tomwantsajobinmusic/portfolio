@@ -115,7 +115,7 @@
     layer.innerHTML = '';
   }
 
-  function paintLayer(layer, item) {
+  function paintLayer(layer, item, { loop = true } = {}) {
     clearLayer(layer);
     const src = encodeURI(item.src);
     if (item.type === 'video') {
@@ -123,7 +123,10 @@
       video.src = src;
       video.autoplay = true;
       video.muted = true;
-      video.loop = true;
+      // A looping video never fires 'ended' (the browser just seeks back to
+      // 0 and keeps playing) - loop:false is what lets the mobile loader's
+      // 'ended' listener actually fire once the clip finishes.
+      video.loop = loop;
       video.playsInline = true;
       layer.appendChild(video);
     } else {
@@ -146,8 +149,8 @@
   }
 
   // Crossfades to a new item, swapping which of the two layers is "active".
-  function showItem(item) {
-    paintLayer(idleLayer, item);
+  function showItem(item, options) {
+    paintLayer(idleLayer, item, options);
     idleLayer.classList.add('is-visible');
     activeLayer.classList.remove('is-visible');
     const next = activeLayer;
@@ -205,6 +208,12 @@
   // a slow connection eats into a fixed time budget and shows fewer photos
   // than intended. Counting actual shown frames is accurate regardless of
   // connection speed.
+  //
+  // Video items are never flashed like photos, in either mode: a video's
+  // own length is a known, meaningful preview on its own. Desktop hover
+  // lets it loop (queueNext once it ends); the mobile loader treats a full
+  // playthrough as the whole loader - it finishes and navigates the moment
+  // the video ends, rather than flashing one frame or looping it 8x.
   async function startHoverCycle(category, { maxAdvances, onComplete } = {}) {
     const folder = folderForCategory(category);
     if (!folder) return;
@@ -225,38 +234,45 @@
       if (token !== hoverToken) return;
 
       const item = items[index % items.length];
-      showItem(item);
+      // Loader mode (maxAdvances) wants exactly one playthrough so 'ended'
+      // below actually fires; desktop hover wants it to loop as normal.
+      showItem(item, { loop: !maxAdvances });
       index++;
       shown++;
       nextPreload = preloadItem(items[index % items.length]);
 
-      if (maxAdvances && shown >= maxAdvances) {
-        onComplete && onComplete();
-        return;
-      }
-
-      // maxAdvances only ever comes from the mobile tap-loader. There, every
-      // item gets a quick flash like a photo, videos included - waiting for
-      // a real video to actually finish (or hit the 30s desktop safety cap)
-      // could blow the loader out to minutes on a video-only folder like
-      // Marketing's, which just reads as "stuck" to anyone tapping it.
-      if (item.type === 'video' && !maxAdvances) {
+      if (item.type === 'video') {
         // showItem() just swapped activeLayer, so the live <video> lives there now.
         const liveVideo = activeLayer.querySelector('video');
+        const afterVideo = () => {
+          if (maxAdvances) {
+            onComplete && onComplete(); // loader mode: full playthrough IS the loader, push right after
+          } else {
+            queueNext(); // desktop hover: keep looping until mouseleave
+          }
+        };
         if (liveVideo) {
-          const onEnd = () => { cleanup(); queueNext(); };
+          const onEnd = () => { cleanup(); afterVideo(); };
           const cleanup = () => {
             liveVideo.removeEventListener('ended', onEnd);
             window.clearTimeout(safety);
           };
           liveVideo.addEventListener('ended', onEnd, { once: true });
-          const safety = window.setTimeout(() => { cleanup(); queueNext(); }, VIDEO_MAX_MS);
+          // Safety net in case 'ended' never fires - shorter in loader mode
+          // since we're not trying to let it loop, just finish once.
+          const safetyMs = maxAdvances ? LOADER_VIDEO_SAFETY_MS : VIDEO_MAX_MS;
+          const safety = window.setTimeout(() => { cleanup(); afterVideo(); }, safetyMs);
         } else {
-          queueNext();
+          afterVideo();
         }
-      } else {
-        queueNext();
+        return;
       }
+
+      if (maxAdvances && shown >= maxAdvances) {
+        onComplete && onComplete();
+        return;
+      }
+      queueNext();
     };
 
     const queueNext = () => {
@@ -319,6 +335,7 @@
 
   const MOBILE_QUERY = '(max-width: 720px)';
   const LOADER_PHOTO_COUNT = 8; // how many photos the loader shows before navigating
+  const LOADER_VIDEO_SAFETY_MS = 20000; // fallback if a loader video never fires 'ended'
 
   function isMobileViewport() {
     return window.matchMedia(MOBILE_QUERY).matches;

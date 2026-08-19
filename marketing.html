@@ -96,11 +96,27 @@
 
     <ul class="text-list">
       <li>Afterdark &mdash; Rebranding Guide</li>
-      <li>Flight By Nothing &mdash; Album Release Marketing Plan</li>
+      <li>
+        <button type="button" class="pdf-link" data-pdf="assets%20-%20marketing/MARKETING%20PLAN%20-%20Thomas%20Brown%20V2%20%281%29.pdf" data-pdf-title="Flight By Nothing — Album Release Marketing Plan">Flight By Nothing &mdash; Album Release Marketing Plan</button>
+      </li>
+      <li>
+        <button type="button" class="pdf-link" data-pdf="assets%20-%20marketing/FBN%20Press%20Release%20-%20Soul%20Submission.pdf" data-pdf-title="Flight By Nothing Press Release - Soul Submission">Flight By Nothing Press Release &mdash; Soul Submission</button>
+      </li>
       <li>Jensen Truly &mdash; Have You Seen Him? (Upcoming Creative Campaign)</li>
     </ul>
   </section>
 </main>
+
+<div class="pdf-modal" id="pdfModal" hidden>
+  <div class="pdf-modal__backdrop" data-pdf-close></div>
+  <div class="pdf-modal__panel" role="dialog" aria-modal="true" aria-label="PDF viewer">
+    <div class="pdf-modal__bar">
+      <span class="pdf-modal__title" id="pdfModalTitle"></span>
+      <button type="button" class="pdf-modal__close" data-pdf-close aria-label="Close PDF viewer">&times;</button>
+    </div>
+    <iframe class="pdf-modal__frame" id="pdfFrame" title="PDF viewer"></iframe>
+  </div>
+</div>
 
 <script src="js/marketing.js" defer></script>
 </body>

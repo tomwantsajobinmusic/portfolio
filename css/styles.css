@@ -303,6 +303,19 @@ img, video { max-width: 100%; display: block; }
   opacity: 0.45;
   font-style: italic;
 }
+
+/* A real paragraph of prose (e.g. an About Me bio) - sentence case and a
+   readable line-height, unlike the short all-caps lines used everywhere
+   else on the site. A full paragraph in all-caps condensed type is a
+   genuine reading-comfort problem, not just a style choice. */
+.bio-copy {
+  max-width: 62ch;
+  margin: 0 auto;
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  opacity: 0.9;
+}
 .pdf-link {
   font: inherit;
   color: inherit;

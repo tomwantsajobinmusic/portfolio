@@ -284,6 +284,25 @@ img, video { max-width: 100%; display: block; }
   font-size: clamp(0.9rem, 1.8vw, 1.2rem);
   letter-spacing: 0.03em;
 }
+.text-list a {
+  transition: color 150ms ease;
+}
+.text-list a:hover,
+.text-list a:focus-visible {
+  color: #ff5c1a;
+}
+
+/* Placeholder for written copy that isn't ready yet (e.g. About Me bio) -
+   distinct from grey media placeholders since there's no box to show. */
+.copy-placeholder {
+  margin: 0;
+  font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  font-size: clamp(0.85rem, 1.6vw, 1rem);
+  letter-spacing: 0.03em;
+  opacity: 0.45;
+  font-style: italic;
+}
 .pdf-link {
   font: inherit;
   color: inherit;
@@ -417,6 +436,12 @@ img, video { max-width: 100%; display: block; }
   width: min(70vw, 640px);
   aspect-ratio: 16 / 7;
 }
+/* A prominent, near-square portrait photo (About/Contact's headshot-style
+   placeholder) - bigger than the default thumbnail-sized .placeholder-block. */
+.placeholder-block--photo {
+  width: min(55vw, 420px);
+  aspect-ratio: 1 / 1;
+}
 
 /* A real video dropped into a .media figure - sized like
    .placeholder-block--wide but without forcing an aspect-ratio, so it
@@ -453,6 +478,7 @@ img, video { max-width: 100%; display: block; }
 
   .placeholder-block { width: min(40vw, 200px); }
   .placeholder-block--wide { width: min(85vw, 400px); }
+  .placeholder-block--photo { width: min(65vw, 300px); }
   .media-video { width: min(85vw, 400px); }
   .media-embed { width: min(85vw, 400px); }
 }

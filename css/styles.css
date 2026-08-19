@@ -246,6 +246,11 @@ img, video { max-width: 100%; display: block; }
   width: auto;
   border-radius: 4px;
 }
+/* Bigger variant - Talent Management's flyers specifically, without also
+   growing Marketing's Live Nation photos (both share .photo-tile). */
+.photo-tile--large {
+  height: clamp(220px, 34vw, 420px);
+}
 
 /* Quick stats + digit roll-up */
 .stats-grid {

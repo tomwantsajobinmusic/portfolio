@@ -1,30 +1,30 @@
 (() => {
   'use strict';
 
-  const MARQUEE_MANIFEST = 'assets - marketing/Ads - Slider/manifest.json';
-
   /* =========================================================
-     PAID MEDIA MARQUEE — auto-scrolls through every ad flyer
+     MARQUEES — auto-scroll through every flyer in a manifest.
+     Used for both Paid Media and Email/SMS Campaigns.
      ========================================================= */
 
-  async function initMarquee() {
-    const track = document.getElementById('paidMediaTrack');
+  async function initMarquee(trackId, manifestPath) {
+    const track = document.getElementById(trackId);
     if (!track) return;
 
     let items = [];
     try {
-      const res = await fetch(encodeURI(MARQUEE_MANIFEST), { cache: 'no-store' });
-      if (!res.ok) throw new Error(`manifest not found: ${MARQUEE_MANIFEST}`);
+      const res = await fetch(encodeURI(manifestPath), { cache: 'no-store' });
+      if (!res.ok) throw new Error(`manifest not found: ${manifestPath}`);
       const data = await res.json();
       items = Array.isArray(data.items) ? data.items : [];
     } catch (err) {
-      console.warn('[marketing] Could not load the Paid Media slider manifest. Add flyers to "assets - marketing/Ads - Slider" and run scripts/build-assets.js.', err);
+      console.warn(`[marketing] Could not load marquee manifest "${manifestPath}".`, err);
       return;
     }
     if (items.length === 0) return;
 
-    // Not lazy-loaded: this is a small (~1MB total), always-animating loop, so
-    // every flyer needs to be ready up front rather than popping in mid-scroll.
+    // Not lazy-loaded: these are small (a few hundred KB to ~1MB total),
+    // always-animating loops, so every flyer needs to be ready up front
+    // rather than popping in mid-scroll.
     const renderSet = () =>
       items.map((item) => {
         const img = document.createElement('img');
@@ -165,7 +165,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    initMarquee();
+    initMarquee('paidMediaTrack', 'assets - marketing/Ads - Slider/manifest.json');
+    initMarquee('emailSmsTrack', 'assets - marketing/Show Flyers - SMS Email/manifest.json');
     initStatRollups();
     initPhotoGrid('liveNationGrid', 'assets - marketing/LN Campaigns/manifest.json');
     initPdfViewer();

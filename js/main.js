@@ -235,7 +235,12 @@
         return;
       }
 
-      if (item.type === 'video') {
+      // maxAdvances only ever comes from the mobile tap-loader. There, every
+      // item gets a quick flash like a photo, videos included - waiting for
+      // a real video to actually finish (or hit the 30s desktop safety cap)
+      // could blow the loader out to minutes on a video-only folder like
+      // Marketing's, which just reads as "stuck" to anyone tapping it.
+      if (item.type === 'video' && !maxAdvances) {
         // showItem() just swapped activeLayer, so the live <video> lives there now.
         const liveVideo = activeLayer.querySelector('video');
         if (liveVideo) {

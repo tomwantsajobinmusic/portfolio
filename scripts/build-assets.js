@@ -11,8 +11,12 @@
  *     than the source, so re-runs are fast.
  *     - Photos: resized, re-encoded as WebP.
  *     - Videos: re-encoded H.264, CRF-based so quality stays high rather
- *       than hitting a low fixed bitrate, audio stripped (every video on
- *       the site plays muted, so it's dead weight).
+ *       than hitting a low fixed bitrate. Audio is only stripped for the
+ *       asset roots in AUDIO_STRIPPED_ROOTS below - those are always
+ *       played back muted by JS regardless (homepage hover, Marketing
+ *       hover video), so the audio track is genuinely dead weight there.
+ *       Everywhere else (e.g. page content video meant to be heard) keeps
+ *       its audio.
  *
  *  2. Write manifest.json in each folder (root included) listing what's in
  *     it, since a static site can't list a folder's contents on its own.
@@ -29,6 +33,10 @@ const execFileAsync = promisify(execFile);
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 const ASSET_ROOTS = ['assets - home', 'assets - marketing', 'assets - management'];
+// Roots whose videos are always played back muted by JS, regardless of
+// source audio - safe to strip there. Anything not listed (e.g. page
+// content video meant to be heard) keeps its audio track.
+const AUDIO_STRIPPED_ROOTS = ['assets - home', 'assets - marketing'];
 const WEB_DIR = '.web';
 const MAX_WIDTH = 2560;   // plenty for a full-bleed background, even on big/hi-dpi screens
 const WEBP_QUALITY = 78;
@@ -94,7 +102,7 @@ async function compressImage(assetsRoot, scope, file) {
   return { outName, skipped: false };
 }
 
-async function compressVideo(assetsRoot, scope, file) {
+async function compressVideo(assetsRootName, assetsRoot, scope, file) {
   const srcPath = path.join(assetsRoot, scope || '.', file);
   const outDir = path.join(assetsRoot, WEB_DIR, scope || '.');
   const outName = path.basename(file, path.extname(file)) + '.mp4';
@@ -107,10 +115,12 @@ async function compressVideo(assetsRoot, scope, file) {
     return { outName, skipped: true };
   }
 
+  const stripAudio = AUDIO_STRIPPED_ROOTS.includes(assetsRootName);
+
   await execFileAsync(ffmpegPath, [
     '-y',
     '-i', srcPath,
-    '-an', // every video on the site plays muted - audio is dead weight
+    ...(stripAudio ? ['-an'] : ['-c:a', 'aac', '-b:a', '160k']),
     '-c:v', 'libx264',
     '-preset', 'medium',
     '-crf', String(VIDEO_CRF),
@@ -138,7 +148,7 @@ async function buildScope(assetsRootName, assetsRoot, scope) {
       const webPath = path.posix.join(assetsRootName, WEB_DIR, scope || '.', outName);
       items.push({ src: webPath, type: 'image' });
     } else {
-      const { outName, skipped } = await compressVideo(assetsRoot, scope, file);
+      const { outName, skipped } = await compressVideo(assetsRootName, assetsRoot, scope, file);
       if (!skipped) compressed++;
       const webPath = path.posix.join(assetsRootName, WEB_DIR, scope || '.', outName);
       items.push({ src: webPath, type: 'video' });

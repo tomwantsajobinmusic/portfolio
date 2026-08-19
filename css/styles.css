@@ -335,6 +335,22 @@ img, video { max-width: 100%; display: block; }
   border-radius: 4px;
 }
 
+/* A YouTube (or other) embed dropped into a .media figure - same footprint
+   as .media-video, but forced to 16:9 since an iframe has no intrinsic
+   size of its own to size by. */
+.media-embed {
+  width: min(70vw, 640px);
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.media-embed iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
   .hero-content { justify-content: flex-start; gap: 3rem; }
@@ -345,6 +361,7 @@ img, video { max-width: 100%; display: block; }
   .placeholder-block { width: min(40vw, 200px); }
   .placeholder-block--wide { width: min(85vw, 400px); }
   .media-video { width: min(85vw, 400px); }
+  .media-embed { width: min(85vw, 400px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

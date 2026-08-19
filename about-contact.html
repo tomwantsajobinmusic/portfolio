@@ -19,11 +19,11 @@
 
   <section class="content-section">
     <figure class="media">
-      <div class="placeholder-block placeholder-block--photo"></div>
+      <img class="photo-tile photo-tile--large" src="about%20-%20assets/.web/Tom%20and%20Jen%202.webp" alt="">
     </figure>
 
     <h2 class="section-heading">About Me</h2>
-    <p class="bio-copy">Thomas Brown is an Austin-based music industry professional, talent manager, and event marketer specializing in artist development, digital campaign strategy, and live event logistics. Holding a degree in Music Business, Thomas combines data-driven digital marketing with hands-on creative execution. He currently serves as Marketing Coordinator at Afterdark Entertainment while managing talent under his independent firm, Sideways Management. His track record includes managing multi-channel ad campaigns for top-tier electronic acts, directing 10+ stop tour operations for indie rock bands, and creating viral promo assets reaching millions.</p>
+    <p class="bio-copy">Thomas Brown is an Austin-based music industry professional, talent manager, event marketer, and concert photographer/videographer specializing in artist development, digital campaign strategy, and live event logistics. Holding a degree in Music Business, Thomas combines data-driven digital marketing with hands-on creative execution. He currently serves as Marketing Coordinator at Afterdark Entertainment while managing talent under his independent firm, Sideways Management. On the media side, he's personally shot and edited content at 50+ concerts and three festivals. His track record also includes managing multi-channel ad campaigns for top-tier electronic acts, directing 10+ stop tour operations for indie rock bands, and creating viral promo assets reaching millions.</p>
   </section>
 
   <section class="content-section">
@@ -31,6 +31,9 @@
     <ul class="text-list">
       <li><a href="mailto:thomas@sidewaysmgmt.com">thomas@sidewaysmgmt.com</a></li>
       <li><a href="tel:+18029991998">+1 802-999-1998</a></li>
+      <li>
+        <button type="button" class="pdf-link" data-pdf="about%20-%20assets/Thomas%20Brown%20-%20Resume%202026.pdf" data-pdf-title="Thomas Brown — Resume">Resume (PDF)</button>
+      </li>
     </ul>
 
     <h2 class="section-heading">Other Info</h2>
@@ -42,5 +45,17 @@
   </section>
 </main>
 
+<div class="pdf-modal" id="pdfModal" hidden>
+  <div class="pdf-modal__backdrop" data-pdf-close></div>
+  <div class="pdf-modal__panel" role="dialog" aria-modal="true" aria-label="PDF viewer">
+    <div class="pdf-modal__bar">
+      <span class="pdf-modal__title" id="pdfModalTitle"></span>
+      <button type="button" class="pdf-modal__close" data-pdf-close aria-label="Close PDF viewer">&times;</button>
+    </div>
+    <iframe class="pdf-modal__frame" id="pdfFrame" title="PDF viewer"></iframe>
+  </div>
+</div>
+
+<script src="js/pdf-viewer.js" defer></script>
 </body>
 </html>

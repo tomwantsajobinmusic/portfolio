@@ -32,7 +32,7 @@ const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 
 const PROJECT_ROOT = path.join(__dirname, '..');
-const ASSET_ROOTS = ['assets - home', 'assets - marketing', 'assets - management'];
+const ASSET_ROOTS = ['assets - home', 'assets - marketing', 'assets - management', 'about - assets'];
 // Roots whose videos are always played back muted by JS, regardless of
 // source audio - safe to strip there. Anything not listed (e.g. page
 // content video meant to be heard) keeps its audio track.

@@ -151,6 +151,28 @@ img, video { max-width: 100%; display: block; }
   opacity: 1;
 }
 
+/* Persistent link to the Media portfolio (external, hosted on Pixieset) -
+   present on every content page so it's always one click away, and opens
+   in a new tab so the page you were on is still sitting there when you
+   come back. Mirrors .back-link, opposite corner. */
+.media-link {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  opacity: 0.65;
+  transition: color 150ms ease, opacity 150ms ease;
+}
+.media-link:hover,
+.media-link:focus-visible {
+  color: #ff5c1a;
+  opacity: 1;
+}
+
 .page {
   min-height: 100vh;
   background: #050505;

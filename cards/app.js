@@ -47,10 +47,6 @@
               '<div class="card__sparkle" id="sparkle-layer"></div>' +
               '<div class="card__glare"></div>' +
               '<div class="card__frame"></div>' +
-              '<div class="card__meta-strip">' +
-                '<span>' + esc(a.cardNumber || "") + '</span>' +
-                '<span class="card__rarity">' + esc(a.rarity || "") + '</span>' +
-              "</div>" +
             "</div>" +
           "</div>" +
           '<span class="card-hint">' + (isTouch() ? "tilt or drag the card" : "move your cursor over the card") + "</span>" +

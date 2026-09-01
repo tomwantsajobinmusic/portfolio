@@ -1,0 +1,461 @@
+/* ────────────────────────────────────────────────────────────
+   CUSTOM FONTS — match the printed physical cards
+   ──────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Venus Rising";
+  src: url("fonts/Venus Rising.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Walnut Regular";
+  src: url("fonts/Walnut Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ────────────────────────────────────────────────────────────
+   TOKENS
+   ──────────────────────────────────────────────────────────── */
+:root {
+  --void:        #08080b;
+  --panel:       #101015;
+  --panel-hi:    #17171e;
+  --hairline:    #26262f;
+  --silver-hi:   #f4f4f7;
+  --silver-mid:  #a8a8b3;
+  --ink-dim:     #6b6b76;
+  --ink-dimmer:  #45454e;
+
+  --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --font-mono:    "Space Mono", "Courier New", monospace;
+
+  --card-w: min(78vw, 320px);
+  --card-h: calc(var(--card-w) * 1.4);
+}
+
+@media (min-width: 860px) {
+  :root { --card-w: 340px; }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--void);
+  color: var(--silver-hi);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 900px 500px at 20% -10%, rgba(140,120,255,0.06), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 10%, rgba(0,220,255,0.05), transparent 60%),
+    var(--void);
+  min-height: 100vh;
+}
+
+a { color: inherit; }
+
+/* ────────────────────────────────────────────────────────────
+   MASTHEAD
+   ──────────────────────────────────────────────────────────── */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 28px 24px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.masthead strong {
+  color: var(--silver-mid);
+  font-weight: 700;
+}
+
+/* ────────────────────────────────────────────────────────────
+   LAYOUT
+   ──────────────────────────────────────────────────────────── */
+.stage {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 56px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 36px;
+    padding-top: 28px;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   HOLO CARD
+   ──────────────────────────────────────────────────────────── */
+.card-column {
+  position: sticky;
+  top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 860px) {
+  .card-column { position: static; }
+}
+
+.card-perspective {
+  width: var(--card-w);
+  height: var(--card-h);
+  perspective: 900px;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg));
+  transition: transform 120ms ease-out, box-shadow 400ms ease;
+  will-change: transform;
+  cursor: grab;
+  box-shadow:
+    0 30px 60px -20px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.card:active { cursor: grabbing; }
+
+.card__face,
+.card__holo,
+.card__sparkle,
+.card__glare,
+.card__frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card__face {
+  background: #1a1a20 center/cover no-repeat;
+}
+.card__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* rainbow diffraction layer, tracks pointer position via --mx/--my */
+.card__holo {
+  background: repeating-linear-gradient(
+    115deg,
+    #ff5ecb 0%,
+    #ffd15e 12%,
+    #7dff9e 24%,
+    #5ecbff 36%,
+    #b25eff 48%,
+    #ff5ecb 60%
+  );
+  background-size: 220% 220%;
+  background-position: var(--mx, 50%) var(--my, 50%);
+  mix-blend-mode: color-dodge;
+  opacity: var(--holo-intensity, 0.2);
+  pointer-events: none;
+}
+
+/* soft moving glare that follows the pointer */
+.card__glare {
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255,255,255,0.55),
+    rgba(255,255,255,0.08) 35%,
+    transparent 60%
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* fine sparkle texture, procedural via SVG noise filter */
+.card__sparkle {
+  background: var(--void);
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+.card__sparkle svg { width: 100%; height: 100%; }
+
+.card__frame {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.18);
+  pointer-events: none;
+}
+
+.card__meta-strip {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--silver-hi);
+  pointer-events: none;
+}
+
+.card__rarity {
+  font-weight: 700;
+  background: linear-gradient(100deg, #e8e8ee, #b7b7c4 40%, #f4f4f7 55%, #9a9aa7 70%, #e8e8ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.card-hint {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dimmer);
+}
+
+/* ────────────────────────────────────────────────────────────
+   NAME — COLD STAMP FOIL
+   ──────────────────────────────────────────────────────────── */
+.dossier-column {
+  min-width: 0;
+}
+
+.artist-name {
+  font-family: var(--name-font, var(--font-display));
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(40px, 7vw, 76px);
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+  margin: 0 0 4px;
+  position: relative;
+  color: var(--ink-dimmer);
+}
+
+.artist-name .foil {
+  background: linear-gradient(
+    115deg,
+    #6b6b76 0%,
+    #e9e9ee 22%,
+    #8f8f9c 38%,
+    #f8f8fb 50%,
+    #8f8f9c 62%,
+    #e9e9ee 78%,
+    #6b6b76 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.6));
+  animation: foil-sweep 2.6s ease-out 1;
+}
+
+@keyframes foil-sweep {
+  from { background-position: 0% 0%; }
+  to   { background-position: 100% 0%; }
+}
+
+.card-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.12em;
+}
+
+.hairline {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 20px 0;
+}
+
+/* ────────────────────────────────────────────────────────────
+   META FIELDS
+   ──────────────────────────────────────────────────────────── */
+.meta-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px 28px;
+  margin-bottom: 28px;
+}
+
+.meta-field dt {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+
+.meta-field dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--silver-hi);
+}
+
+/* ────────────────────────────────────────────────────────────
+   DOSSIER / TYPEWRITER PANEL
+   ──────────────────────────────────────────────────────────── */
+.dossier-panel {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 24px 26px;
+  position: relative;
+}
+
+.dossier-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dossier-label::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7dff9e;
+  box-shadow: 0 0 6px #7dff9e;
+}
+
+.dossier-text {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--silver-hi);
+  white-space: pre-wrap;
+  min-height: 1.75em;
+}
+
+.dossier-text p {
+  margin: 0 0 1.3em;
+}
+.dossier-text p:last-child { margin-bottom: 0; }
+
+.caret {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: var(--silver-hi);
+  vertical-align: text-bottom;
+  margin-left: 1px;
+  animation: blink 0.9s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   LINKS
+   ──────────────────────────────────────────────────────────── */
+.dossier-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+
+.dossier-links.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.dossier-links a {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--silver-hi);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 9px 16px;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.dossier-links a:hover {
+  border-color: var(--silver-mid);
+  color: #fff;
+}
+
+/* ────────────────────────────────────────────────────────────
+   FOOTER
+   ──────────────────────────────────────────────────────────── */
+.site-footer {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 24px 40px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dimmer);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ────────────────────────────────────────────────────────────
+   NOT FOUND STATE
+   ──────────────────────────────────────────────────────────── */
+.not-found {
+  max-width: 480px;
+  margin: 140px auto;
+  text-align: center;
+  padding: 0 24px;
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.not-found strong {
+  display: block;
+  color: var(--silver-hi);
+  font-family: var(--font-display);
+  font-size: 32px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   MOTION PREFERENCES
+   ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .artist-name .foil { animation: none; background-position: 50% 0%; }
+  .caret { animation: none; }
+}

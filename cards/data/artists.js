@@ -51,8 +51,9 @@ window.ARTISTS = {
     rarity: "HOLO RARE",
     nameFont: "Venus Rising",
     story: [
-      "Duplicate this entry to make a new card. Swap the image, rewrite the story, change the slug key above it — nothing else needs to change.",
-      "The story field types itself out on load, so keep it punchy. Two short paragraphs is the sweet spot."
+      "Shooting Sofi Tukker was a set I walked into completely blind. I hadn't listened to much going in, but I'd heard their name all over the festival grounds all day. Turns out that's exactly who half the crowd had come for.",
+      "By the time Sofi stepped out with a guitar in hand, you could feel it: that rare kind of connection where a few thousand people lock in on a performer at once.",
+      "That's the thing about Sofi Tukker: you don't have to walk in a fan to feel it. Their performance does the converting for you."
     ],
     links: [
       { label: "Learn more about my work", url: "https://thomasbrownworks.com" },

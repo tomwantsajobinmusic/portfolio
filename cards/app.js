@@ -36,7 +36,7 @@
     root.innerHTML =
       '<header class="masthead">' +
         "<span>Moments by Thomas Brown</span>" +
-        '<span id="masthead-right"></span>' +
+        '<a class="masthead__home" href="../index.html">&larr; Home</a>' +
       "</header>" +
       '<main class="stage">' +
         '<div class="card-column">' +

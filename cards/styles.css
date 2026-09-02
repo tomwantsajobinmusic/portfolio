@@ -79,6 +79,17 @@ a { color: inherit; }
   color: var(--ink-dim);
 }
 
+.masthead__home {
+  text-decoration: none;
+  color: inherit;
+  transition: color 160ms ease;
+}
+
+.masthead__home:hover,
+.masthead__home:focus-visible {
+  color: var(--silver-hi);
+}
+
 .masthead strong {
   color: var(--silver-mid);
   font-weight: 700;

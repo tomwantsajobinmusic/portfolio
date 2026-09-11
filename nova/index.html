@@ -315,7 +315,7 @@
     <div>
       <p class="brand-eyebrow">Paid Social Report</p>
       <h1 class="client">Mayfair Lounge &amp; Nightclub</h1>
-      <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Aug 28 – Sep 10, 2026</span> (14 days live)</p>
+      <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Aug 28 – Sep 10, 2026</span> (14 days, rolling)</p>
     </div>
     <div class="top-right">
       <span class="updated">Last updated <span class="num" id="updatedText">Sep 11, 2026</span></span>
@@ -361,48 +361,49 @@
 </div>
 
 <script>
-  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), Aug 28 – Sep 10, 2026 ----
+  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-08-28 .. 2026-09-10 ----
+  // Auto-generated daily by scripts/sync-nova.js — do not hand-edit this block.
   // Each row: [dateLabel, spend, clicks, impressions, landingPageViews]
   const DAILY = [
-    ['Aug 28', 53.00,  272,  7149,  155],
+    ['Aug 28', 53.00, 272, 7149, 155],
     ['Aug 29', 110.91, 1270, 15441, 669],
     ['Aug 30', 114.87, 1245, 16995, 667],
     ['Aug 31', 122.04, 1219, 17036, 655],
-    ['Sep 1',  102.10, 956,  13094, 561],
-    ['Sep 2',  270.00, 2312, 37428, 1409],
-    ['Sep 3',  394.94, 4523, 45589, 2561],
-    ['Sep 4',  199.99, 2188, 23057, 1283],
-    ['Sep 5',  206.74, 2214, 23397, 1302],
-    ['Sep 6',  240.92, 2628, 27135, 1486],
-    ['Sep 7',  235.38, 2574, 27997, 1492],
-    ['Sep 8',  301.70, 2734, 37720, 1696],
-    ['Sep 9',  417.60, 3782, 51369, 2189],
-    ['Sep 10', 424.79, 4274, 51907, 2401],
+    ['Sep 1', 102.10, 956, 13094, 561],
+    ['Sep 2', 212.44, 1907, 29849, 1180],
+    ['Sep 3', 309.71, 3484, 37941, 2015],
+    ['Sep 4', 199.99, 2188, 23057, 1282],
+    ['Sep 5', 206.74, 2214, 23397, 1302],
+    ['Sep 6', 240.92, 2628, 27135, 1486],
+    ['Sep 7', 235.38, 2574, 27997, 1492],
+    ['Sep 8', 301.70, 2734, 37720, 1696],
+    ['Sep 9', 417.60, 3782, 51369, 2189],
+    ['Sep 10', 425.56, 4277, 51973, 2401],
   ];
 
   const TOTAL = {
-    spend: 3195, impressions: 395316, reach: 255629, clicks: 32191,
-    landingPageViews: 18526, cpc: 0.099251, cpm: 8.082142, ctr: 8.143106
+    spend: 3052.96, impressions: 380153, reach: 247365, clicks: 30750,
+    landingPageViews: 17750, cpc: 0.099283, cpm: 8.030872, ctr: 8.088848
   };
 
-  // Week-over-week (only 14 days of live spend exist, so this replaces a "prior period")
+  // Week-over-week: most recent 7 days of the window vs the 7 before that
   const WOW = {
-    spend: { prev: 1167.86, curr: 2027.14 },
-    impressions: { prev: 152732, curr: 242584 },
-    clicks: { prev: 11797, curr: 20394 },
-    reach: { prev: 102333, curr: 180991 },
-    cpm: { prev: 7.646466, curr: 8.356446 },
-    ctr: { prev: 7.723987, curr: 8.406985 },
-    landingPageViews: { prev: 6677, curr: 11849 },
+    spend: { prev: 1025.07, curr: 2027.89 },
+    impressions: { prev: 137505, curr: 242648 },
+    clicks: { prev: 10353, curr: 20397 },
+    reach: { prev: 90351, curr: 180991 },
+    cpm: { prev: 7.454783, curr: 8.357332 },
+    ctr: { prev: 7.529181, curr: 8.406004 },
+    landingPageViews: { prev: 5902, curr: 11848 },
   };
   const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
   const CAMPAIGNS = [
+    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 954.43, cpc: 0.092073, ctr: 9.649253, landingPageViews: 6086 },
+    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 936.84, cpc: 0.092254, ctr: 8.686986, landingPageViews: 6033 },
     { name: 'Big Gigantic', status: 'off', spend: 670.03, cpc: 0.104741, ctr: 7.019103, landingPageViews: 3546 },
-    { name: 'Dillon Francis C&C — SATX', status: 'off', spend: 936.57, cpc: 0.092228, ctr: 8.688770, landingPageViews: 6033 },
-    { name: 'Dillon Francis C&C — Houston', status: 'off', spend: 954.03, cpc: 0.092052, ctr: 9.650266, landingPageViews: 6086 },
-    { name: 'LP Giobbi — Dallas', status: 'on', spend: 245.61, cpc: 0.132549, ctr: 5.265250, landingPageViews: 905 },
-    { name: 'LP Giobbi — El Paso', status: 'on', spend: 245.97, cpc: 0.124353, ctr: 6.708980, landingPageViews: 1180 },
+    { name: 'LP Giobbi - El Paso', status: 'on', spend: 246.05, cpc: 0.12433, ctr: 6.709384, landingPageViews: 1180 },
+    { name: 'LP Giobbi - Dallas', status: 'on', spend: 245.61, cpc: 0.132547, ctr: 5.265252, landingPageViews: 905 },
   ];
 
   const fmtUSD = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });

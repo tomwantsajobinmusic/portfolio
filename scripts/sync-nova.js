@@ -72,6 +72,7 @@ async function aggregateInsights(since, until) {
     ctr: Number(row.ctr || 0),
     cpm: Number(row.cpm || 0),
     landingPageViews: getAction(row.actions, 'landing_page_view'),
+    purchases: getAction(row.actions, 'omni_purchase'),
   };
 }
 
@@ -86,6 +87,7 @@ async function dailyInsights(since, until) {
       clicks: Number(row.clicks || 0),
       impressions: Number(row.impressions || 0),
       landingPageViews: getAction(row.actions, 'landing_page_view'),
+      purchases: getAction(row.actions, 'omni_purchase'),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -129,7 +131,7 @@ function jsNum(n, digits = 6) {
 
 function buildDataBlock({ daily, total, wowPrev, wowCurr, campaigns, onMap, since, until }) {
   const dailyLines = daily
-    .map(d => `    ['${dateLabel(d.date)}', ${d.spend.toFixed(2)}, ${d.clicks}, ${d.impressions}, ${d.landingPageViews}],`)
+    .map(d => `    ['${dateLabel(d.date)}', ${d.spend.toFixed(2)}, ${d.clicks}, ${d.impressions}, ${d.landingPageViews}, ${d.purchases}],`)
     .join('\n');
 
   const campaignLines = campaigns
@@ -144,14 +146,15 @@ function buildDataBlock({ daily, total, wowPrev, wowCurr, campaigns, onMap, sinc
 
   return `  // ---- Real Meta Marketing API data, ${AD_ACCOUNT} (Mayfair), ${ymd(since)} .. ${ymd(until)} ----
   // Auto-generated daily by scripts/sync-nova.js — do not hand-edit this block.
-  // Each row: [dateLabel, spend, clicks, impressions, landingPageViews]
+  // Each row: [dateLabel, spend, clicks, impressions, landingPageViews, purchases]
   const DAILY = [
 ${dailyLines}
   ];
 
   const TOTAL = {
     spend: ${jsNum(total.spend, 2)}, impressions: ${total.impressions}, reach: ${total.reach}, clicks: ${total.clicks},
-    landingPageViews: ${total.landingPageViews}, cpc: ${jsNum(total.cpc)}, cpm: ${jsNum(total.cpm)}, ctr: ${jsNum(total.ctr)}
+    landingPageViews: ${total.landingPageViews}, cpc: ${jsNum(total.cpc)}, cpm: ${jsNum(total.cpm)}, ctr: ${jsNum(total.ctr)},
+    purchases: ${total.purchases}
   };
 
   // Week-over-week: most recent 7 days of the window vs the 7 before that
@@ -163,6 +166,7 @@ ${dailyLines}
     cpm: { prev: ${jsNum(wowPrev.cpm)}, curr: ${jsNum(wowCurr.cpm)} },
     ctr: { prev: ${jsNum(wowPrev.ctr)}, curr: ${jsNum(wowCurr.ctr)} },
     landingPageViews: { prev: ${wowPrev.landingPageViews}, curr: ${wowCurr.landingPageViews} },
+    purchases: { prev: ${wowPrev.purchases}, curr: ${wowCurr.purchases} },
   };
   const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 

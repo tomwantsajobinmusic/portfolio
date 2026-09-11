@@ -379,46 +379,48 @@
 <script>
   // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-08-28 .. 2026-09-10 ----
   // Auto-generated daily by scripts/sync-nova.js — do not hand-edit this block.
-  // Each row: [dateLabel, spend, clicks, impressions, landingPageViews]
+  // Each row: [dateLabel, spend, clicks, impressions, landingPageViews, purchases]
   const DAILY = [
-    ['Aug 28', 53.00,  272,  7149,  155],
-    ['Aug 29', 110.91, 1270, 15441, 669],
-    ['Aug 30', 114.87, 1245, 16995, 667],
-    ['Aug 31', 122.04, 1219, 17036, 655],
-    ['Sep 1',  102.10, 956,  13094, 561],
-    ['Sep 2',  212.44, 1907, 29849, 1180],
-    ['Sep 3',  309.71, 3484, 37941, 2015],
-    ['Sep 4',  199.99, 2188, 23057, 1282],
-    ['Sep 5',  206.74, 2214, 23397, 1302],
-    ['Sep 6',  240.92, 2628, 27135, 1486],
-    ['Sep 7',  235.38, 2574, 27997, 1492],
-    ['Sep 8',  301.70, 2734, 37720, 1696],
-    ['Sep 9',  417.60, 3782, 51369, 2189],
-    ['Sep 10', 425.56, 4277, 51973, 2401],
+    ['Aug 28', 53.00, 272, 7149, 155, 0],
+    ['Aug 29', 110.91, 1270, 15441, 669, 0],
+    ['Aug 30', 114.87, 1245, 16995, 667, 0],
+    ['Aug 31', 122.04, 1219, 17036, 655, 0],
+    ['Sep 1', 102.10, 956, 13094, 561, 0],
+    ['Sep 2', 212.44, 1907, 29849, 1180, 0],
+    ['Sep 3', 309.71, 3484, 37941, 2015, 0],
+    ['Sep 4', 199.99, 2188, 23057, 1282, 0],
+    ['Sep 5', 206.74, 2214, 23397, 1302, 0],
+    ['Sep 6', 240.92, 2628, 27135, 1486, 0],
+    ['Sep 7', 235.38, 2574, 27997, 1492, 0],
+    ['Sep 8', 301.70, 2734, 37720, 1696, 0],
+    ['Sep 9', 417.60, 3782, 51369, 2189, 0],
+    ['Sep 10', 425.89, 4282, 51997, 2401, 5],
   ];
 
   const TOTAL = {
-    spend: 3052.96, impressions: 380153, reach: 247365, clicks: 30750,
-    landingPageViews: 17750, cpc: 0.099283, cpm: 8.030872, ctr: 8.088848
+    spend: 3053.29, impressions: 380177, reach: 247365, clicks: 30755,
+    landingPageViews: 17750, cpc: 0.099278, cpm: 8.031233, ctr: 8.089653,
+    purchases: 5
   };
 
   // Week-over-week: most recent 7 days of the window vs the 7 before that
   const WOW = {
-    spend: { prev: 1025.07, curr: 2027.89 },
-    impressions: { prev: 137505, curr: 242648 },
-    clicks: { prev: 10353, curr: 20397 },
+    spend: { prev: 1025.07, curr: 2028.22 },
+    impressions: { prev: 137505, curr: 242672 },
+    clicks: { prev: 10353, curr: 20402 },
     reach: { prev: 90351, curr: 180991 },
-    cpm: { prev: 7.454783, curr: 8.357332 },
-    ctr: { prev: 7.529181, curr: 8.406004 },
+    cpm: { prev: 7.454783, curr: 8.357866 },
+    ctr: { prev: 7.529181, curr: 8.407233 },
     landingPageViews: { prev: 5902, curr: 11848 },
+    purchases: { prev: 0, curr: 5 },
   };
   const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
   const CAMPAIGNS = [
-    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 954.43, cpc: 0.092073, ctr: 9.649253, landingPageViews: 6086 },
-    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 936.84, cpc: 0.092254, ctr: 8.686986, landingPageViews: 6033 },
+    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 954.60, cpc: 0.092072, ctr: 9.650217, landingPageViews: 6086 },
+    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 936.97, cpc: 0.092249, ctr: 8.68788, landingPageViews: 6033 },
     { name: 'Big Gigantic', status: 'off', spend: 670.03, cpc: 0.104741, ctr: 7.019103, landingPageViews: 3546 },
-    { name: 'LP Giobbi - El Paso', status: 'on', spend: 246.05, cpc: 0.12433, ctr: 6.709384, landingPageViews: 1180 },
+    { name: 'LP Giobbi - El Paso', status: 'on', spend: 246.08, cpc: 0.124283, ctr: 6.712092, landingPageViews: 1180 },
     { name: 'LP Giobbi - Dallas', status: 'on', spend: 245.61, cpc: 0.132547, ctr: 5.265252, landingPageViews: 905 },
   ];
 

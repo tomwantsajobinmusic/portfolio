@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Mayfair Ads Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --ink-950: #0d0b14;
+    --ink-800: #191625;
+    --ink-700: #241f34;
+    --paper-050: #faf8fb;
+    --paper-100: #f1eef6;
+    --paper-200: #e6e1ef;
+
+    --text-primary: #241f34;
+    --text-secondary: #5c5570;
+    --text-muted: #8f88a3;
+    --border: #e2dcec;
+    --surface: #ffffff;
+    --bg: var(--paper-050);
+
+    --accent: #6b46e5;
+    --accent-soft: #efe9fd;
+    --accent-ink: #4a2fb0;
+    --series-2: #2aa7a0;
+    --series-2-soft: #e2f5f3;
+
+    --good: #1f9d6b;
+    --good-soft: #e4f6ee;
+    --warning: #b8790f;
+    --warning-soft: #fbf1de;
+    --critical: #d0393c;
+    --critical-soft: #fbe6e6;
+
+    --shadow: 0 1px 2px rgba(36, 31, 52, 0.06), 0 8px 24px -12px rgba(36, 31, 52, 0.18);
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --text-primary: #f1eef8;
+      --text-secondary: #b7b0c7;
+      --text-muted: #8a83a0;
+      --border: #322c46;
+      --surface: #191625;
+      --bg: var(--ink-950);
+
+      --accent: #8a6bf0;
+      --accent-soft: #2a2350;
+      --accent-ink: #cabdfb;
+      --series-2: #2fa89e;
+      --series-2-soft: #17332f;
+
+      --good: #3ec98e;
+      --good-soft: #143528;
+      --warning: #e2ac4c;
+      --warning-soft: #3a2c10;
+      --critical: #ef6567;
+      --critical-soft: #3a1616;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --text-primary: #f1eef8;
+    --text-secondary: #b7b0c7;
+    --text-muted: #8a83a0;
+    --border: #322c46;
+    --surface: #191625;
+    --bg: var(--ink-950);
+
+    --accent: #8a6bf0;
+    --accent-soft: #2a2350;
+    --accent-ink: #cabdfb;
+    --series-2: #2fa89e;
+    --series-2-soft: #17332f;
+
+    --good: #3ec98e;
+    --good-soft: #143528;
+    --warning: #e2ac4c;
+    --warning-soft: #3a2c10;
+    --critical: #ef6567;
+    --critical-soft: #3a1616;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    padding: 28px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .num { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  header.top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  h1.client {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(1.7rem, 4vw, 2.5rem);
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .range {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    margin-top: 6px;
+  }
+  .top-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .updated {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+
+  h2.section-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.05rem;
+    margin: 18px 0 0;
+    color: var(--text-primary);
+  }
+
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .tile.hero { box-shadow: var(--shadow); }
+  .tile-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .tile-value {
+    font-size: 1.55rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .tile.hero .tile-value { font-size: 1.85rem; }
+  .tile-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .delta {
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .delta.good { color: var(--good); }
+  .delta.neutral { color: var(--text-muted); }
+  .delta.critical { color: var(--critical); }
+  .spark { flex: none; }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 18px 12px;
+  }
+  .chart-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .chart-card-head .name { font-weight: 600; font-size: 0.92rem; }
+  .chart-card-head .sum { font-size: 0.85rem; color: var(--text-secondary); }
+  .axis-label { font-size: 0.68rem; fill: var(--text-muted); font-family: 'IBM Plex Mono', monospace; }
+
+  .rank-list { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+  .rank-row { display: grid; grid-template-columns: minmax(90px, 200px) 1fr auto; align-items: center; gap: 12px; }
+  .rank-label { font-size: 0.86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 7px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .rank-track { background: var(--border); border-radius: 999px; height: 10px; overflow: hidden; }
+  .rank-fill { height: 100%; border-radius: 999px; background: var(--accent); }
+  .rank-value { font-size: 0.86rem; text-align: right; white-space: nowrap; }
+
+  table.campaigns {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  table.campaigns caption { display: none; }
+  .table-scroll { overflow-x: auto; border-radius: var(--radius-lg); }
+  table.campaigns th, table.campaigns td {
+    padding: 12px 16px;
+    text-align: right;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+  table.campaigns th:first-child, table.campaigns td:first-child { text-align: left; }
+  table.campaigns thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  table.campaigns tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+  table.campaigns tbody tr:hover { background: var(--accent-soft); }
+  .camp-name { font-weight: 500; }
+  .roas-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px 3px 7px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .roas-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .roas-chip.good { background: var(--good-soft); color: var(--good); }
+  .roas-chip.good::before { background: var(--good); }
+  .roas-chip.warning { background: var(--warning-soft); color: var(--warning); }
+  .roas-chip.warning::before { background: var(--warning); }
+  .roas-chip.muted { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 3px 9px; }
+  .roas-chip.muted::before { display: none; }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+  footer strong { color: var(--text-secondary); font-weight: 600; }
+
+  @media (max-width: 760px) {
+    .tile-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    header.top { align-items: flex-start; }
+    .top-right { align-items: flex-start; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .tile, .chart-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="brand-eyebrow">Sideways Management &middot; Paid Social Report</p>
+      <h1 class="client">Mayfair Lounge &amp; Nightclub</h1>
+      <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Aug 28 – Sep 10, 2026</span> (14 days live)</p>
+    </div>
+    <div class="top-right">
+      <span class="updated">Last updated <span class="num" id="updatedText">Sep 11, 2026</span></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="tile-grid" id="heroTiles"></div>
+  </section>
+
+  <section>
+    <div class="tile-grid" id="secondaryTiles"></div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Total spend by campaign</h2>
+    <div id="chartGrid" style="margin-top:10px;"></div>
+  </section>
+
+  <section>
+    <h2 class="section-title">By campaign</h2>
+    <div class="table-scroll" style="margin-top:10px;">
+      <table class="campaigns" id="campaignTable">
+        <thead>
+          <tr>
+            <th>Campaign</th>
+            <th>Status</th>
+            <th>Spend</th>
+            <th>CPC</th>
+            <th>CTR</th>
+            <th>Landing page views</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>Source: Meta Marketing API (Ads Manager &amp; Pixel). Pulled directly from the account — refreshed manually for now, automatic daily sync coming soon. Figures reflect Meta's attribution window and may differ slightly from your own analytics.</span>
+    <span><strong>Sideways Management</strong> &middot; sidewaysmgmt.com</span>
+  </footer>
+
+</div>
+
+<script>
+  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), Aug 28 – Sep 10, 2026 ----
+  // Each row: [dateLabel, spend, clicks, impressions, landingPageViews]
+  const DAILY = [
+    ['Aug 28', 53.00,  272,  7149,  155],
+    ['Aug 29', 110.91, 1270, 15441, 669],
+    ['Aug 30', 114.87, 1245, 16995, 667],
+    ['Aug 31', 122.04, 1219, 17036, 655],
+    ['Sep 1',  102.10, 956,  13094, 561],
+    ['Sep 2',  270.00, 2312, 37428, 1409],
+    ['Sep 3',  394.94, 4523, 45589, 2561],
+    ['Sep 4',  199.99, 2188, 23057, 1283],
+    ['Sep 5',  206.74, 2214, 23397, 1302],
+    ['Sep 6',  240.92, 2628, 27135, 1486],
+    ['Sep 7',  235.38, 2574, 27997, 1492],
+    ['Sep 8',  301.70, 2734, 37720, 1696],
+    ['Sep 9',  417.60, 3782, 51369, 2189],
+    ['Sep 10', 424.79, 4274, 51907, 2401],
+  ];
+
+  const TOTAL = {
+    spend: 3195, impressions: 395316, reach: 255629, clicks: 32191,
+    landingPageViews: 18526, cpc: 0.099251, cpm: 8.082142, ctr: 8.143106
+  };
+
+  // Week-over-week (only 14 days of live spend exist, so this replaces a "prior period")
+  const WOW = {
+    spend: { prev: 1167.86, curr: 2027.14 },
+    impressions: { prev: 152732, curr: 242584 },
+    clicks: { prev: 11797, curr: 20394 },
+    reach: { prev: 102333, curr: 180991 },
+    cpm: { prev: 7.646466, curr: 8.356446 },
+    ctr: { prev: 7.723987, curr: 8.406985 },
+    landingPageViews: { prev: 6677, curr: 11849 },
+  };
+  const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
+
+  const CAMPAIGNS = [
+    { name: 'Big Gigantic', status: 'off', spend: 670.03, cpc: 0.104741, ctr: 7.019103, landingPageViews: 3546 },
+    { name: 'Dillon Francis C&C — SATX', status: 'off', spend: 936.57, cpc: 0.092228, ctr: 8.688770, landingPageViews: 6033 },
+    { name: 'Dillon Francis C&C — Houston', status: 'off', spend: 954.03, cpc: 0.092052, ctr: 9.650266, landingPageViews: 6086 },
+    { name: 'LP Giobbi — Dallas', status: 'on', spend: 245.61, cpc: 0.132549, ctr: 5.265250, landingPageViews: 905 },
+    { name: 'LP Giobbi — El Paso', status: 'on', spend: 245.97, cpc: 0.124353, ctr: 6.708980, landingPageViews: 1180 },
+  ];
+
+  const fmtUSD = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const fmtUSD2 = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtNum = n => n.toLocaleString('en-US');
+  const fmtPct = n => n.toFixed(1) + '%';
+
+  // ---- sparkline (mini area) ----
+  function sparkline(values, color) {
+    const w = 84, h = 28, pad = 2;
+    const min = Math.min(...values), max = Math.max(...values);
+    const span = (max - min) || 1;
+    const pts = values.map((v, i) => {
+      const x = pad + (i / (values.length - 1)) * (w - pad * 2);
+      const y = h - pad - ((v - min) / span) * (h - pad * 2);
+      return [x, y];
+    });
+    const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const area = line + ` L${pts[pts.length - 1][0].toFixed(1)},${h} L${pts[0][0].toFixed(1)},${h} Z`;
+    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+      <path d="${area}" fill="${color}" opacity="0.16"></path>
+      <path d="${line}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>`;
+  }
+
+  function tile({ label, value, deltaText, deltaGood, sparkColor, sparkValues, hero }) {
+    const deltaClass = deltaGood === null ? 'neutral' : (deltaGood ? 'good' : 'critical');
+    const arrow = /^[-−]/.test(deltaText) ? '▼' : (/^[+]?[\d.]/.test(deltaText) ? '▲' : '');
+    return `<div class="tile${hero ? ' hero' : ''}">
+      <div class="tile-label">${label}</div>
+      <div class="tile-value num">${value}</div>
+      <div class="tile-foot">
+        <span class="delta ${deltaClass}">${arrow ? arrow + ' ' : ''}${deltaText}</span>
+        ${sparkValues ? sparkline(sparkValues, sparkColor) : ''}
+      </div>
+    </div>`;
+  }
+
+  const spendSeries = DAILY.map(d => d[1]);
+  const lpvSeries = DAILY.map(d => d[4]);
+  const cpcSeries = DAILY.map(d => d[1] / d[2]);
+
+  const spendDelta = pctChange(WOW.spend.prev, WOW.spend.curr);
+  const cpcDelta = pctChange(WOW.spend.prev / WOW.clicks.prev, WOW.spend.curr / WOW.clicks.curr);
+  const lpvDelta = pctChange(WOW.landingPageViews.prev, WOW.landingPageViews.curr);
+
+  document.getElementById('heroTiles').innerHTML = [
+    tile({ label: 'Amount spent', value: fmtUSD(TOTAL.spend), deltaText: `${spendDelta.toFixed(0)}% vs last week`, deltaGood: null, sparkColor: 'var(--accent)', sparkValues: spendSeries, hero: true }),
+    tile({ label: 'Cost per click', value: fmtUSD2(TOTAL.cpc), deltaText: Math.abs(cpcDelta) < 1 ? 'flat vs last week' : `${cpcDelta.toFixed(0)}% vs last week`, deltaGood: null, sparkColor: 'var(--accent)', sparkValues: cpcSeries, hero: true }),
+    tile({ label: 'Landing page views', value: fmtNum(TOTAL.landingPageViews), deltaText: `${lpvDelta.toFixed(0)}% vs last week`, deltaGood: true, sparkColor: 'var(--series-2)', sparkValues: lpvSeries, hero: true }),
+  ].join('');
+
+  const cpmDelta = pctChange(WOW.cpm.prev, WOW.cpm.curr);
+  const ctrPP = (WOW.ctr.curr - WOW.ctr.prev);
+  const reachDelta = pctChange(WOW.reach.prev, WOW.reach.curr);
+  const imprDelta = pctChange(WOW.impressions.prev, WOW.impressions.curr);
+
+  document.getElementById('secondaryTiles').innerHTML = [
+    tile({ label: 'CPM', value: fmtUSD2(TOTAL.cpm), deltaText: `${cpmDelta.toFixed(0)}% vs last week`, deltaGood: null }),
+    tile({ label: 'CTR', value: fmtPct(TOTAL.ctr), deltaText: `+${ctrPP.toFixed(1)}pp vs last week`, deltaGood: true }),
+    tile({ label: 'Reach', value: fmtNum(TOTAL.reach), deltaText: `${reachDelta.toFixed(0)}% vs last week`, deltaGood: null }),
+    tile({ label: 'Impressions', value: fmtNum(TOTAL.impressions), deltaText: `${imprDelta.toFixed(0)}% vs last week`, deltaGood: null }),
+  ].join('');
+
+  // ---- total spend by campaign (ranked bars) ----
+  const rankedCampaigns = [...CAMPAIGNS].sort((a, b) => b.spend - a.spend);
+  const maxCampaignSpend = Math.max(...rankedCampaigns.map(c => c.spend));
+
+  document.getElementById('chartGrid').innerHTML = `
+    <div class="chart-card">
+      <div class="chart-card-head"><span class="name">By campaign</span><span class="sum num">${fmtUSD(TOTAL.spend)} total</span></div>
+      <div class="rank-list">
+        ${rankedCampaigns.map(c => `
+          <div class="rank-row">
+            <span class="rank-label"><span class="status-dot" style="background:${c.status === 'on' ? 'var(--good)' : 'var(--text-muted)'}"></span>${c.name}</span>
+            <span class="rank-track"><span class="rank-fill" style="width:${((c.spend / maxCampaignSpend) * 100).toFixed(1)}%"></span></span>
+            <span class="rank-value num">${fmtUSD(c.spend)}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // ---- campaign table ----
+  document.querySelector('#campaignTable tbody').innerHTML = CAMPAIGNS.map(c => {
+    const isOn = c.status === 'on';
+    return `<tr>
+      <td class="camp-name">${c.name}</td>
+      <td><span class="roas-chip ${isOn ? 'good' : 'muted'}">${isOn ? 'On' : 'Off'}</span></td>
+      <td class="num">${fmtUSD(c.spend)}</td>
+      <td class="num">${fmtUSD2(c.cpc)}</td>
+      <td class="num">${fmtPct(c.ctr)}</td>
+      <td class="num">${fmtNum(c.landingPageViews)}</td>
+    </tr>`;
+  }).join('');
+</script>
+
+</body>
+</html>

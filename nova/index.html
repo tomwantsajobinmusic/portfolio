@@ -330,11 +330,11 @@
       <div>
         <p class="brand-eyebrow">Paid Social Report</p>
         <h1 class="client">Nova Ads Dashboard</h1>
-        <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Sep 3 – Sep 16, 2026</span> (14 days, rolling)</p>
+        <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Sep 4 – Sep 17, 2026</span> (14 days, rolling)</p>
       </div>
     </div>
     <div class="top-right">
-      <span class="updated">Last updated <span class="num" id="updatedText">Sep 17, 2026</span></span>
+      <span class="updated">Last updated <span class="num" id="updatedText">Sep 18, 2026</span></span>
     </div>
   </header>
 
@@ -377,11 +377,10 @@
 </div>
 
 <script>
-  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-09-03 .. 2026-09-16 ----
+  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-09-04 .. 2026-09-17 ----
   // Auto-generated daily by scripts/sync-nova.js — do not hand-edit this block.
   // Each row: [dateLabel, spend, clicks, impressions, landingPageViews, purchases]
   const DAILY = [
-    ['Sep 3', 309.71, 3484, 37941, 2015, 0],
     ['Sep 4', 199.99, 2188, 23057, 1282, 0],
     ['Sep 5', 206.74, 2214, 23397, 1302, 0],
     ['Sep 6', 240.92, 2628, 27135, 1486, 0],
@@ -394,34 +393,34 @@
     ['Sep 13', 224.56, 1536, 21993, 838, 1],
     ['Sep 14', 202.10, 1518, 22244, 749, 0],
     ['Sep 15', 186.54, 1401, 20037, 681, 0],
-    ['Sep 16', 199.86, 1349, 22182, 688, 1],
+    ['Sep 16', 200.07, 1350, 22201, 688, 1],
+    ['Sep 17', 181.12, 1297, 19384, 697, 0],
   ];
 
   const TOTAL = {
-    spend: 3623.39, impressions: 422547, reach: 280754, clicks: 33732,
-    landingPageViews: 18915, cpc: 0.107417, cpm: 8.575117, ctr: 7.983017,
+    spend: 3495.01, impressions: 404009, reach: 272761, clicks: 31546,
+    landingPageViews: 17597, cpc: 0.110791, cpm: 8.650822, ctr: 7.808242,
     purchases: 11
   };
 
   // Week-over-week: most recent 7 days of the window vs the 7 before that
   const WOW = {
-    spend: { prev: 1912.04, curr: 1711.35 },
-    impressions: { prev: 228616, curr: 193931 },
-    clicks: { prev: 19604, curr: 14128 },
-    reach: { prev: 159512, curr: 139845 },
-    cpm: { prev: 8.363544, curr: 8.82453 },
-    ctr: { prev: 8.575078, curr: 7.285065 },
-    landingPageViews: { prev: 11462, curr: 7453 },
-    purchases: { prev: 0, curr: 11 },
+    spend: { prev: 2029.08, curr: 1465.93 },
+    impressions: { prev: 242753, curr: 161256 },
+    clicks: { prev: 20406, curr: 11140 },
+    reach: { prev: 181022, curr: 111912 },
+    cpm: { prev: 8.35862, curr: 9.090701 },
+    ctr: { prev: 8.406075, curr: 6.90827 },
+    landingPageViews: { prev: 11848, curr: 5749 },
+    purchases: { prev: 5, curr: 6 },
   };
   const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
   const CAMPAIGNS = [
-    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 948.41, cpc: 0.090992, ctr: 9.941058, landingPageViews: 6133 },
-    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 915.38, cpc: 0.091712, ctr: 8.890413, landingPageViews: 5922 },
-    { name: 'LP Giobbi - Dallas', status: 'on', spend: 858.47, cpc: 0.143581, ctr: 5.696944, landingPageViews: 2832 },
-    { name: 'LP Giobbi - El Paso', status: 'on', spend: 845.35, cpc: 0.12368, ctr: 7.278555, landingPageViews: 3735 },
-    { name: 'Big Gigantic', status: 'off', spend: 55.78, cpc: 0.108521, ctr: 7.81749, landingPageViews: 293 },
+    { name: 'LP Giobbi - Dallas', status: 'on', spend: 951.02, cpc: 0.143615, ctr: 5.782295, landingPageViews: 3149 },
+    { name: 'LP Giobbi - El Paso', status: 'on', spend: 934.13, cpc: 0.124717, ctr: 7.220112, landingPageViews: 4115 },
+    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 820.75, cpc: 0.091499, ctr: 10.005466, landingPageViews: 5314 },
+    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 789.11, cpc: 0.093231, ctr: 8.807675, landingPageViews: 5019 },
   ];
 
   const fmtUSD = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });

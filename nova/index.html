@@ -330,11 +330,11 @@
       <div>
         <p class="brand-eyebrow">Paid Social Report</p>
         <h1 class="client">Nova Ads Dashboard</h1>
-        <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Sep 9 – Sep 22, 2026</span> (14 days, rolling)</p>
+        <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Sep 10 – Sep 23, 2026</span> (14 days, rolling)</p>
       </div>
     </div>
     <div class="top-right">
-      <span class="updated">Last updated <span class="num" id="updatedText">Sep 23, 2026</span></span>
+      <span class="updated">Last updated <span class="num" id="updatedText">Sep 24, 2026</span></span>
     </div>
   </header>
 
@@ -377,11 +377,10 @@
 </div>
 
 <script>
-  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-09-09 .. 2026-09-22 ----
+  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-09-10 .. 2026-09-23 ----
   // Auto-generated daily by scripts/sync-nova.js — do not hand-edit this block.
   // Each row: [dateLabel, spend, clicks, impressions, landingPageViews, purchases]
   const DAILY = [
-    ['Sep 9', 417.60, 3782, 51369, 2189, 0],
     ['Sep 10', 426.75, 4286, 52078, 2401, 5],
     ['Sep 11', 249.31, 2376, 30826, 1274, 1],
     ['Sep 12', 222.23, 1662, 24571, 822, 3],
@@ -395,32 +394,33 @@
     ['Sep 20', 97.68, 575, 9618, 314, 3],
     ['Sep 21', 105.85, 675, 11857, 367, 0],
     ['Sep 22', 20.40, 121, 2206, 62, 0],
+    ['Sep 23', 0.00, 0, 0, 0, 0],
   ];
 
   const TOTAL = {
-    spend: 2839.83, impressions: 319135, reach: 207233, clicks: 22510,
-    landingPageViews: 12114, cpc: 0.126159, cpm: 8.898523, ctr: 7.053441,
+    spend: 2422.23, impressions: 267766, reach: 178559, clicks: 18728,
+    landingPageViews: 9925, cpc: 0.129337, cpm: 9.04607, ctr: 6.994167,
     purchases: 17
   };
 
   // Week-over-week: most recent 7 days of the window vs the 7 before that
   const WOW = {
-    spend: { prev: 1929.09, curr: 910.74 },
-    impressions: { prev: 223118, curr: 96017 },
-    clicks: { prev: 16561, curr: 5949 },
-    reach: { prev: 156864, curr: 75508 },
-    cpm: { prev: 8.646053, curr: 9.485195 },
-    ctr: { prev: 7.42253, curr: 6.195778 },
-    landingPageViews: { prev: 8954, curr: 3160 },
-    purchases: { prev: 10, curr: 7 },
+    spend: { prev: 1711.56, curr: 710.67 },
+    impressions: { prev: 193950, curr: 73816 },
+    clicks: { prev: 14129, curr: 4599 },
+    reach: { prev: 139845, curr: 58386 },
+    cpm: { prev: 8.824749, curr: 9.627588 },
+    ctr: { prev: 7.284867, curr: 6.230357 },
+    landingPageViews: { prev: 7453, curr: 2472 },
+    purchases: { prev: 11, curr: 6 },
   };
   const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
   const CAMPAIGNS = [
-    { name: 'LP Giobbi - Dallas', status: 'off', spend: 1330.78, cpc: 0.149559, ctr: 5.840652, landingPageViews: 4323 },
-    { name: 'LP Giobbi - El Paso', status: 'on', spend: 987.11, cpc: 0.126084, ctr: 7.270617, landingPageViews: 4280 },
-    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 274.68, cpc: 0.084491, ctr: 11.099351, landingPageViews: 2001 },
-    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 247.26, cpc: 0.097654, ctr: 8.49123, landingPageViews: 1510 },
+    { name: 'LP Giobbi - Dallas', status: 'off', spend: 1219.00, cpc: 0.150736, ctr: 5.924672, landingPageViews: 3930 },
+    { name: 'LP Giobbi - El Paso', status: 'off', spend: 901.74, cpc: 0.126135, ctr: 7.325846, landingPageViews: 3865 },
+    { name: 'Dillon Francis C&C - Houston', status: 'off', spend: 155.50, cpc: 0.079785, ctr: 12.113114, landingPageViews: 1224 },
+    { name: 'Dillon Francis C&C - SATX', status: 'off', spend: 145.99, cpc: 0.094614, ctr: 8.770534, landingPageViews: 906 },
   ];
 
   const fmtUSD = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });

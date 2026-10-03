@@ -330,11 +330,11 @@
       <div>
         <p class="brand-eyebrow">Paid Social Report</p>
         <h1 class="client">Nova Ads Dashboard</h1>
-        <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Sep 18 – Oct 1, 2026</span> (14 days, rolling)</p>
+        <p class="range">Meta Ads &amp; Pixel &middot; <span class="num" id="rangeText">Sep 19 – Oct 2, 2026</span> (14 days, rolling)</p>
       </div>
     </div>
     <div class="top-right">
-      <span class="updated">Last updated <span class="num" id="updatedText">Oct 2, 2026</span></span>
+      <span class="updated">Last updated <span class="num" id="updatedText">Oct 3, 2026</span></span>
     </div>
   </header>
 
@@ -377,11 +377,10 @@
 </div>
 
 <script>
-  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-09-18 .. 2026-10-01 ----
+  // ---- Real Meta Marketing API data, act_979054470216542 (Mayfair), 2026-09-19 .. 2026-10-02 ----
   // Auto-generated daily by scripts/sync-nova.js — do not hand-edit this block.
   // Each row: [dateLabel, spend, clicks, impressions, landingPageViews, purchases]
   const DAILY = [
-    ['Sep 18', 205.92, 1334, 20769, 712, 1],
     ['Sep 19', 99.31, 594, 9957, 320, 2],
     ['Sep 20', 97.68, 575, 9618, 314, 3],
     ['Sep 21', 105.85, 675, 11857, 367, 0],
@@ -393,27 +392,27 @@
   ];
 
   const TOTAL = {
-    spend: 529.16, impressions: 54407, reach: 45881, clicks: 3299,
-    landingPageViews: 1775, cpc: 0.1604, cpm: 9.725954, ctr: 6.063558,
-    purchases: 6
+    spend: 323.24, impressions: 33638, reach: 29167, clicks: 1965,
+    landingPageViews: 1063, cpc: 0.164499, cpm: 9.60937, ctr: 5.841608,
+    purchases: 5
   };
 
   // Week-over-week: most recent 7 days of the window vs the 7 before that
   const WOW = {
-    spend: { prev: 529.16, curr: 0 },
-    impressions: { prev: 54407, curr: 0 },
-    clicks: { prev: 3299, curr: 0 },
-    reach: { prev: 45881, curr: 0 },
-    cpm: { prev: 9.725954, curr: 0 },
-    ctr: { prev: 6.063558, curr: 0 },
-    landingPageViews: { prev: 1775, curr: 0 },
-    purchases: { prev: 6, curr: 0 },
+    spend: { prev: 323.24, curr: 0 },
+    impressions: { prev: 33638, curr: 0 },
+    clicks: { prev: 1965, curr: 0 },
+    reach: { prev: 29167, curr: 0 },
+    cpm: { prev: 9.60937, curr: 0 },
+    ctr: { prev: 5.841608, curr: 0 },
+    landingPageViews: { prev: 1063, curr: 0 },
+    purchases: { prev: 5, curr: 0 },
   };
   const pctChange = (prev, curr) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
   const CAMPAIGNS = [
-    { name: 'LP Giobbi - Dallas', status: 'off', spend: 427.06, cpc: 0.16438, ctr: 5.906828, landingPageViews: 1377 },
-    { name: 'LP Giobbi - El Paso', status: 'off', spend: 102.10, cpc: 0.145649, ctr: 6.724866, landingPageViews: 398 },
+    { name: 'LP Giobbi - Dallas', status: 'off', spend: 323.24, cpc: 0.164499, ctr: 5.841608, landingPageViews: 1061 },
+    { name: 'LP Giobbi - El Paso', status: 'off', spend: 0.00, cpc: 0, ctr: 0, landingPageViews: 2 },
   ];
 
   const fmtUSD = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });

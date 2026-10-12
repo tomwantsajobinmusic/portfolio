@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791784577';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791784577';
+import * as db from './store.js?v=1791785356';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791785356';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -35,7 +35,14 @@ async function start() {
   // Arriving from the email confirmation link: the link itself proves the beta password was used.
   const q = new URLSearchParams(location.search);
   // View-only demo of Thomas's passport: no password, no account.
-  if (q.has('demo')) { const d = await fetch('data/demo/demo.json').then(r => r.json()); DEMO = true; state = { profile: d.profile, entries: d.entries }; return go('book'); }
+  // View-only books: ?demo shows Thomas's live passport, ?u=name shows anyone who made theirs public.
+  if (q.has('demo') || q.get('u')) {
+    const who = (q.get('u') || 'thomasbrown').toLowerCase().replace(/^@/, '');
+    let d = null; try { d = await db.getPublicBook(who); } catch (e) {}
+    if ((!d || !d.entries.length) && who === 'thomasbrown') d = await fetch('data/demo/demo.json').then(r => r.json()).catch(() => null);
+    if (!d) { app.innerHTML = '<section class="screen cover"><h1>Rave Passport</h1><p class="gate-q">That passport is private.</p><span></span></section>'; return; }
+    DEMO = true; state = { profile: d.profile, entries: d.entries }; return go('book');
+  }
   const confirmed = q.has('confirmed') || /type=signup/.test(location.hash);
   if (confirmed) {
     store.set('rp-gate', 'ok'); store.set('rp-has-account', '1');
@@ -243,7 +250,7 @@ async function book(openIndex) {
   const upd = () => { const i = cur(); dots.textContent = (i + 1) + ' / ' + (E.length + 1); if (!DEMO) $('#edit').classList.toggle('hidden', i === 0); };
   bk.addEventListener('scroll', () => requestAnimationFrame(upd)); upd();
   if (openIndex) requestAnimationFrame(() => { bk.scrollLeft = openIndex * bk.clientWidth; upd(); });
-  if (DEMO) { $('#own').onclick = () => { DEMO = false; history.replaceState(null, '', location.pathname); start(); }; if (openIndex == null) toast('Swipe to flip through Thomas’s passport.', 3000); return; }
+  if (DEMO) { $('#own').onclick = () => { DEMO = false; history.replaceState(null, '', location.pathname); start(); }; if (openIndex == null) toast('Swipe to flip through ' + (state.profile.name ? state.profile.name.split(' ')[0] + '’s' : 'this') + ' passport.', 3000); return; }
   $('#prof').onclick = () => go('setup');
   $('#add').onclick = () => go('editor', null);
   $('#edit').onclick = () => { const i = cur(); if (i > 0) go('editor', E[i - 1]); };

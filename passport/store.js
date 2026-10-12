@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791784577';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791785356';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -53,7 +53,7 @@ export async function saveProfile(p) {
 /* ---------- entries (pages in the book) ---------- */
 export async function listEntries() {
   if (!LIVE) return local().entries.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
-  const { data, error } = await sb.from('entries').select('*').order('date', { ascending: true }).order('created_at', { ascending: true }); if (error) throw error; return data;
+  const { data, error } = await sb.from('entries').select('*').order('num', { ascending: true, nullsFirst: false }).order('date', { ascending: true }).order('created_at', { ascending: true }); if (error) throw error; return data;
 }
 export async function saveEntry(e) {
   if (!LIVE) { const s = local(); if (!e.id) e.id = uid(); const i = s.entries.findIndex(x => x.id === e.id); if (i >= 0) s.entries[i] = e; else s.entries.push(e); saveLocal(s); return e; }
@@ -82,3 +82,12 @@ async function callSearch(params, signal) {
 }
 export async function searchPast(q, signal) { const d = await callSearch({ q }, signal); return d ? d.events || [] : []; }
 export async function pastLineup(venueId, date) { const d = await callSearch({ venueId, date }); return d ? d.artists || [] : []; }
+
+/* ---------- public, view-only books ---------- */
+export async function getPublicBook(username) {
+  if (!LIVE) return null;
+  const { data: profile } = await sb.from('profiles').select('*').eq('username', username).eq('is_public', true).maybeSingle();
+  if (!profile) return null;
+  const { data: entries } = await sb.from('entries').select('*').eq('user_id', profile.id).order('num', { ascending: true, nullsFirst: false }).order('date', { ascending: true });
+  return { profile, entries: entries || [] };
+}

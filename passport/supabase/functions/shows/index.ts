@@ -89,9 +89,26 @@ async function festivalDays(venue: string, city: string, year: string, from = ''
     await sleep(550);
   }
   const inWindow = (iso: string) => { const md = iso.slice(5); return (!from || md >= from) && (!to || md <= to); };
+  // RA too: find the venue on RA and take its past events that year in the same window
+  const raRows: Row[] = [];
+  const vs = await ra(`query($q:String!){ search(searchTerm:$q, limit:6, indices:[CLUB], includeNonLive:true){ searchType id value areaName } }`, { q: venue });
+  const cityK = norm(city).split(' ')[0] || '';
+  const club = (vs?.search || []).find((h: any) => norm(h.value).startsWith(norm(venue)) && (!cityK || norm(h.areaName || '').includes(cityK))) || (vs?.search || []).find((h: any) => norm(h.value).startsWith(norm(venue)));
+  if (club) {
+    const d = await ra(`query($id:ID!){ venue(id:$id){ events(type:PREVIOUS, limit:200){ ${EV} } } }`, { id: club.id });
+    for (const e of d?.venue?.events || []) {
+      const r = raRow(e); if (!r.d.startsWith(year) || !inWindow(r.d) || r.a.length < 3) continue;
+      // RA lists a multi-day festival once; give each day the full lineup so any day can be picked
+      const end = String(e.endTime || '').slice(0, 10);
+      for (let t = new Date(r.d + 'T12:00:00Z'); ; t.setUTCDate(t.getUTCDate() + 1)) {
+        const day = t.toISOString().slice(0, 10); if (day > (end && end > r.d ? end : r.d) || raRows.length > 60) break;
+        raRows.push({ ...r, id: r.id + ':' + day, d: day, a: [...r.a] });
+      }
+    }
+  }
   // festivals are often filed stage by stage: merge everything on the same day into one row
   const byDay = new Map<string, Row>();
-  for (const r of rows(all).filter((r) => inWindow(r.d))) {
+  for (const r of [...raRows, ...rows(all).filter((r) => inWindow(r.d))]) {
     const d = byDay.get(r.d); if (!d) { byDay.set(r.d, { ...r, id: 'fest:' + r.d, f: 1 }); continue; }
     r.a.forEach((x) => !d.a.includes(x) && d.a.push(x));
   }

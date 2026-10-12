@@ -418,6 +418,25 @@
      "Wenzday"
     ]
    }
+  },
+  {
+   "name": "Breakaway Dallas",
+   "aliases": [
+    "breakaway texas",
+    "breakaway dallas fort worth",
+    "breakaway"
+   ],
+   "venue": "Fair Park",
+   "cityQ": "Dallas",
+   "city": "Dallas, TX",
+   "from": "03-25",
+   "to": "04-30",
+   "dates": {
+    "2026": [
+     "2026-04-10",
+     "2026-04-11"
+    ]
+   }
   }
  ]
 }

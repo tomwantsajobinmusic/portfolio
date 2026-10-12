@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791826958';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791826958';
+import * as db from './store.js?v=1791827082';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791827082';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -586,7 +586,7 @@ async function logodir() {
   const drawGrid = () => {
     const q = keyOf(query), list = all().filter(l => (filter === 'all' || l.kind === filter) && (!q || l.key.includes(q))).sort((a, b) => a.name.localeCompare(b.name));
     $('#cnt').textContent = list.length;
-    $('#grid').innerHTML = list.map(l => `<figure><div><img src="${esc(l.url)}" alt="" loading="lazy"></div><figcaption>${esc(l.name)}<small>${esc(KIND_LABEL[l.kind] || '')}</small></figcaption>${l.editable ? `<div class="acts"><button type="button" class="sw" data-n="${esc(l.name)}" data-k="${esc(l.kind)}">SWAP</button>${l.builtin ? '' : `<button type="button" class="rm" data-id="${esc(l.id)}" aria-label="Remove ${esc(l.name)}">×</button>`}</div>` : ''}</figure>`).join('') || '<p class="hint">Nothing yet. Add the first one above.</p>';
+    $('#grid').innerHTML = list.map(l => `<figure${l.editable ? ' tabindex="0"' : ''}><div class="img"><img src="${esc(l.url)}" alt="" loading="lazy"></div><figcaption>${esc(l.name)}<small>${esc(KIND_LABEL[l.kind] || '')}</small></figcaption>${l.editable ? `<div class="acts"><button type="button" class="sw" data-n="${esc(l.name)}" data-k="${esc(l.kind)}">SWAP</button>${l.builtin ? '' : `<button type="button" class="rm" data-id="${esc(l.id)}" aria-label="Remove ${esc(l.name)}">×</button>`}</div>` : ''}</figure>`).join('') || '<p class="hint">Nothing yet. Add the first one above.</p>';
     $$('#grid .sw').forEach(b => b.onclick = () => {
       $('#lName').value = b.dataset.n; $('#lKind').value = b.dataset.k; fileBlob = null; $('#lUrl').value = ''; preview(''); dupe(); canAdd();
       $('#lName').closest('.section').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('#lUrl').focus({ preventScroll: true }), 400);

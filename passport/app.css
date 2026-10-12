@@ -154,11 +154,12 @@ button{cursor:pointer}
 .section h3 small{font:500 11px var(--mono);color:var(--muted);margin-left:6px}
 .lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:12px}
 .lgrid figure{margin:0;position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:rgba(255,255,255,.5)}
-.lgrid figure>div{aspect-ratio:3/2;background:#8c8c8c;display:flex;align-items:center;justify-content:center;padding:8px}
 .lgrid img{max-width:100%;max-height:100%;object-fit:contain}
 .lgrid figcaption{padding:5px 6px;font:600 11px var(--sans);line-height:1.25;overflow-wrap:anywhere}
 .lgrid figcaption small{display:block;font:500 9px var(--mono);letter-spacing:.06em;color:var(--muted);margin-top:2px}
-.lgrid .rm{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(10,49,97,.85);color:#fff;font:600 15px/1 var(--sans)}
-.lgrid .acts{display:flex;gap:4px;padding:0 6px 6px}
-.lgrid .acts .sw{flex:1;border:1.5px solid var(--navy);background:transparent;color:var(--navy);border-radius:4px;padding:5px 0;font:700 10px var(--sans);letter-spacing:.12em}
-.lgrid .acts .rm{position:static;flex:none;width:28px;height:auto;border-radius:4px;font-size:16px}
+.lgrid figure{outline:none}
+.lgrid figure>.img{aspect-ratio:3/2;background:#8c8c8c;display:flex;align-items:center;justify-content:center;padding:8px}
+.lgrid .acts{position:absolute;inset:0 0 auto 0;aspect-ratio:3/2;display:flex;align-items:center;justify-content:center;background:rgba(10,49,97,.55);opacity:0;pointer-events:none;transition:opacity .15s}
+.lgrid figure:hover .acts,.lgrid figure:focus-within .acts{opacity:1;pointer-events:auto}
+.lgrid .acts .sw{border:0;background:#fff;color:var(--navy);border-radius:999px;padding:6px 14px;font:700 10px var(--sans);letter-spacing:.14em;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.lgrid .acts .rm{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:0;background:#fff;color:var(--navy);font:600 14px/1 var(--sans)}

@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791836235';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791836235';
+import * as db from './store.js?v=1791836745';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791836745';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -44,8 +44,15 @@ const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (
 const routes = { gate, cover, apply, signin, setup, book, editor, logodir };
 async function go(name, arg) { window.scrollTo(0, 0); await routes[name](arg); }
 
+// Never leave a blank screen: every server wait has a time limit, and anything unexpected shows a retry screen.
+const within = (p, ms, fallback) => Promise.race([p, new Promise(r => setTimeout(() => r(fallback), ms))]);
+function stuck(msg) {
+  app.innerHTML = `<section class="screen cover"><h1>Rave Passport</h1><p class="gate-q">${esc(msg || 'Couldn’t reach the server.')}</p><button class="btn" id="retry" style="max-width:260px;margin:18px auto 0">TRY AGAIN</button></section>`;
+  $('#retry').onclick = () => location.reload();
+}
 async function start() {
-  try { await db.init(); } catch (e) { console.error(e); }
+  app.innerHTML = '<section class="screen cover"><h1>Rave Passport</h1><p class="gate-q">Opening your passport…</p></section>';
+  try { await within(db.init(), 8000); } catch (e) { console.error(e); }
   logos();
   // Arriving from the email confirmation link: the link itself proves the beta password was used.
   const q = new URLSearchParams(location.search);
@@ -66,11 +73,12 @@ async function start() {
     return go('signin', 'Email confirmed. Sign in to open your passport.');
   }
   // Skip the beta question for anyone signed in, and on any network where someone has signed in before.
-  const user = await db.currentUser().catch(() => null);
+  const user = await within(db.currentUser().catch(() => null), 8000, null);
   if (user) { store.set('rp-gate', 'ok'); db.rememberNetwork(); }
-  else if (store.get('rp-gate') !== 'ok') { if (await db.knownNetwork()) store.set('rp-gate', 'ok'); else return go('gate'); }
+  else if (store.get('rp-gate') !== 'ok') { if (await within(db.knownNetwork(), 4000, false)) store.set('rp-gate', 'ok'); else return go('gate'); }
   if (!user) return go('cover');
-  await loadMine();
+  const ok = await within(loadMine().then(() => true).catch(() => false), 12000, false);
+  if (!ok) return stuck('Couldn’t load your passport. Check your connection and try again.');
   if (!state.profile || !state.profile.name) return go('setup');
   if (q.has('logos')) return go('logodir');
   go('book');
@@ -669,4 +677,4 @@ routes.customize = async function customize(id) {
   tray.querySelector('#ok').onclick = async ev => { ev.currentTarget.disabled = true; try { await db.saveEntry(e); state.entries = await db.listEntries(); toast('Page saved.'); go('book', state.entries.findIndex(x => x.id === id) + 1); } catch (x) { toast(x.message || 'Could not save.'); ev.currentTarget.disabled = false; } };
 };
 
-start();
+start().catch(e => { console.error(e); stuck(); });

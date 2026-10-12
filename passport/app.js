@@ -20,7 +20,7 @@ async function sha256(s) { const b = await crypto.subtle.digest('SHA-256', new T
 const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
 /* ---------- shared data ---------- */
-let LOGOS = null, EVENTS = null, state = { profile: null, entries: [] };
+let LOGOS = null, EVENTS = null, DEMO = false, state = { profile: null, entries: [] };
 const logos = async () => LOGOS || (LOGOS = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []));
 const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
 const logoFor = (name, cats) => (LOGOS || []).find(l => (!cats || cats.includes(l.cat)) && (l.key === keyOf(name) || keyOf(name).startsWith(l.key) && l.key.length > 4));
@@ -33,7 +33,10 @@ async function start() {
   try { await db.init(); } catch (e) { console.error(e); }
   logos();
   // Arriving from the email confirmation link: the link itself proves the beta password was used.
-  const q = new URLSearchParams(location.search), confirmed = q.has('confirmed') || /type=signup/.test(location.hash);
+  const q = new URLSearchParams(location.search);
+  // View-only demo of Thomas's passport: no password, no account.
+  if (q.has('demo')) { const d = await fetch('data/demo/demo.json').then(r => r.json()); DEMO = true; state = { profile: d.profile, entries: d.entries }; return go('book'); }
+  const confirmed = q.has('confirmed') || /type=signup/.test(location.hash);
   if (confirmed) {
     store.set('rp-gate', 'ok'); store.set('rp-has-account', '1');
     await new Promise(r => setTimeout(r, 300)); await db.signOut().catch(() => {});
@@ -179,7 +182,7 @@ const stampCache = new Map();
 async function stampURL(p) {
   const k = JSON.stringify(p); if (stampCache.has(k)) return stampCache.get(k);
   let logo = null; if (p.logo) try { logo = await loadImage(p.logo); } catch (e) {}
-  const url = p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo }).toDataURL();
+  const url = p.img ? p.img : p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo }).toDataURL();
   stampCache.set(k, url); return url;
 }
 
@@ -213,7 +216,7 @@ async function book(openIndex) {
       <div class="mrz" aria-hidden="true">${esc(m1)}<br>${esc(m2)}</div>
     </article>
     ${E.map((e, i) => `<article class="page tint-${esc(e.bg?.tint || 'cream')}" data-i="${i + 1}" data-id="${esc(e.id)}">
-      <span class="num">#${(tb.raves_before || 0) + i + 1}</span>
+      <span class="num">#${e.num || (tb.raves_before || 0) + i + 1}</span>
       ${e.bg?.url ? `<img class="art" src="${esc(e.bg.url)}" alt="" style="${e.bg.y != null ? `top:${+e.bg.y}%;` : ''}${e.bg.s ? `width:${86 * e.bg.s}%;` : ''}">` : ''}
       <div class="stamps" data-id="${esc(e.id)}"></div>
       <div class="facts">
@@ -226,10 +229,10 @@ async function book(openIndex) {
     </article>`).join('')}
   </div>
   <span class="dots" id="dots"></span>
-  <nav class="bar" id="bar">
+  <nav class="bar" id="bar">${DEMO ? '<button class="primary" id="own">Get your own passport</button>' : `
     <button id="prof">Profile</button>
     <button class="primary" id="add">+ Add show</button>
-    <button id="edit" class="hidden">Edit page</button>
+    <button id="edit" class="hidden">Edit page</button>`}
   </nav>`;
   // stamps
   for (const e of E) { const host = app.querySelector(`.stamps[data-id="${CSS.escape(e.id)}"]`); await drawStamps(host, e.stamps || []); }
@@ -237,9 +240,10 @@ async function book(openIndex) {
   // paging
   const bk = $('#bk'), dots = $('#dots');
   const cur = () => Math.round(bk.scrollLeft / bk.clientWidth);
-  const upd = () => { const i = cur(); dots.textContent = (i + 1) + ' / ' + (E.length + 1); $('#edit').classList.toggle('hidden', i === 0); };
+  const upd = () => { const i = cur(); dots.textContent = (i + 1) + ' / ' + (E.length + 1); if (!DEMO) $('#edit').classList.toggle('hidden', i === 0); };
   bk.addEventListener('scroll', () => requestAnimationFrame(upd)); upd();
   if (openIndex) requestAnimationFrame(() => { bk.scrollLeft = openIndex * bk.clientWidth; upd(); });
+  if (DEMO) { $('#own').onclick = () => { DEMO = false; history.replaceState(null, '', location.pathname); start(); }; if (openIndex == null) toast('Swipe to flip through Thomas’s passport.', 3000); return; }
   $('#prof').onclick = () => go('setup');
   $('#add').onclick = () => go('editor', null);
   $('#edit').onclick = () => { const i = cur(); if (i > 0) go('editor', E[i - 1]); };

@@ -20,13 +20,29 @@ export const ENGRAVE = {
 };
 export function engrave(img, { style = 'passport', ink = INKS.navy, max = 900, alphaAsInk = true } = {}) {
   const o = ENGRAVE[style] || ENGRAVE.passport;
-  const s = Math.min(1, max / Math.max(img.width, img.height)), W = Math.max(2, Math.round(img.width * s)), H = Math.max(2, Math.round(img.height * s));
+  // always engrave at full working size: small logos are scaled up, or their lines come out thinner than a pixel
+  const s = max / Math.max(img.width, img.height), W = Math.max(2, Math.round(img.width * s)), H = Math.max(2, Math.round(img.height * s));
   const c = canvas(W, H), x = c.getContext('2d', { willReadFrequently: true });
   x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
   try { if ('filter' in x) x.filter = 'blur(' + o.soft * W / 1200 + 'px)'; } catch (e) {}
   x.drawImage(img, 0, 0, W, H);
   const d = x.getImageData(0, 0, W, H).data, gray = new Float32Array(W * H);
   for (let i = 0, j = 0; i < d.length; i += 4, j++) gray[j] = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255;
+  // Logos with a see-through background: solid parts are ink whatever their color, so white, silver and pale logos
+  // still engrave (lighter colors a touch lighter, so detail inside the logo survives).
+  const m = canvas(W, H), mx = m.getContext('2d', { willReadFrequently: true }); mx.drawImage(img, 0, 0, W, H);
+  const md = mx.getImageData(0, 0, W, H).data; let transparent = 0; for (let i = 3; i < md.length; i += 16) if (md[i] < 20) transparent++;
+  const isLogo = alphaAsInk && transparent > md.length / 16 * .15;
+  if (isLogo) {
+    const blurred = canvas(W, H), bx = blurred.getContext('2d', { willReadFrequently: true });
+    try { if ('filter' in bx) bx.filter = 'blur(' + o.soft * W / 1200 + 'px)'; } catch (e) {}
+    bx.drawImage(img, 0, 0, W, H);
+    const bd = bx.getImageData(0, 0, W, H).data;
+    for (let i = 0, j = 0; i < bd.length; i += 4, j++) {
+      const a = bd[i + 3] / 255, luma = (0.299 * bd[i] + 0.587 * bd[i + 1] + 0.114 * bd[i + 2]) / 255;
+      gray[j] = 1 - a * (0.72 + 0.28 * (1 - luma));
+    }
+  }
   const sp = o.spacing * W / 900, out = canvas(W, H), ox = out.getContext('2d');
   ox.fillStyle = ink; ox.beginPath();
   const layers = [{ a: o.angle, thr: 0 }]; if (o.cross) layers.push({ a: o.angle + 62, thr: .62 });
@@ -50,11 +66,7 @@ export function engrave(img, { style = 'passport', ink = INKS.navy, max = 900, a
     }
   }
   ox.fill();
-  if (alphaAsInk) { // transparent parts of a logo stay empty
-    const m = canvas(W, H), mx = m.getContext('2d'); mx.drawImage(img, 0, 0, W, H);
-    const md = mx.getImageData(0, 0, W, H).data; let transparent = 0; for (let i = 3; i < md.length; i += 16) if (md[i] < 20) transparent++;
-    if (transparent > md.length / 16 * .15) { ox.globalCompositeOperation = 'destination-in'; ox.drawImage(m, 0, 0); ox.globalCompositeOperation = 'source-over'; }
-  }
+  if (isLogo) { ox.globalCompositeOperation = 'destination-in'; ox.drawImage(m, 0, 0); ox.globalCompositeOperation = 'source-over'; } // transparent parts stay empty
   return out;
 }
 

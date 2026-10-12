@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791843958';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791843958';
+import * as db from './store.js?v=1791844105';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791844105';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -30,12 +30,15 @@ const socialsHTML = p => { const so = p.theme?.socials || {}, list = SOCIALS.fil
 const AUTO_SOURCES = ['official site', 'wikidata', 'wikipedia', 'seeklogo'];
 const rankLogos = list => [...list].sort((a, b) => (AUTO_SOURCES.includes(a.source) - AUTO_SOURCES.includes(b.source)) || String(b.created_at).localeCompare(String(a.created_at)));
 const logos = async (fresh) => { if (LOGOS && !fresh) return LOGOS;
-  const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
+  const base = await fetch(dataURL('data/logos/index.json')).then(r => r.json()).catch(() => []);
   const shared = rankLogos(await db.listLogos().catch(() => []));
   return LOGOS = [...shared.map(l => ({ cat: CAT[l.kind], name: l.name, key: l.key, src: l.url })), ...base.map(l => ({ ...l, src: 'data/' + l.file }))]; };
+// data files carry the app's version so a new release never reads a stale cached copy
+const APP_V = new URL(import.meta.url).searchParams.get('v') || String(Date.now());
+const dataURL = path => path + '?v=' + APP_V;
 let FESTS = null;
-const festivals = async () => FESTS || (FESTS = await fetch('data/festivals.json').then(r => r.json()).then(d => d.festivals).catch(() => []));
-const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
+const festivals = async () => FESTS || (FESTS = await fetch(dataURL('data/festivals.json')).then(r => r.json()).then(d => d.festivals).catch(() => []));
+const events = async () => EVENTS || (EVENTS = await fetch(dataURL('data/events.json')).then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
 const coreKey = s => keyOf(String(s || '').replace(/\b(19|20)\d\d\b/g, '').replace(/\b(music|arts?|and|festival|fest|weekend ?\d?|presents|the|las vegas|ibiza|official)\b/gi, ' '));
 const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (!k) return null; const L = (LOGOS || []).filter(l => !cats || cats.includes(l.cat));
   return L.find(l => l.key === k) || L.find(l => c.length > 3 && coreKey(l.name) === c) || L.find(l => l.key.length > 4 && (k.startsWith(l.key) || (k.length > 6 && l.key.startsWith(k)))) || null; };
@@ -70,7 +73,7 @@ async function start() {
   if (q.has('demo') || q.get('u')) {
     const who = (q.get('u') || 'thomasbrown').toLowerCase().replace(/^@/, '');
     let d = null; try { d = await db.getPublicBook(who); } catch (e) {}
-    if ((!d || !d.entries.length) && who === 'thomasbrown') d = await fetch('data/demo/demo.json').then(r => r.json()).catch(() => null);
+    if ((!d || !d.entries.length) && who === 'thomasbrown') d = await fetch(dataURL('data/demo/demo.json')).then(r => r.json()).catch(() => null);
     if (!d) { app.innerHTML = '<section class="screen cover"><h1>Rave Passport</h1><p class="gate-q">That passport is private.</p><span></span></section>'; return; }
     DEMO = true; state = { profile: d.profile, entries: d.entries }; return go('book');
   }
@@ -544,7 +547,7 @@ const KIND_LABEL = { dj: 'DJ / ARTIST', club: 'CLUB', venue: 'VENUE', festival: 
 async function logodir() {
   const me = await db.myId(), admin = await db.isAdmin();
   let shared = await db.listLogos().catch(() => []), filter = 'all', query = '', candidates = [], previewOK = false, fileBlob = null;
-  const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
+  const base = await fetch(dataURL('data/logos/index.json')).then(r => r.json()).catch(() => []);
   const KINDOF = { DJs: 'dj', Clubs: 'club', Venues: 'venue', Festivals: 'festival', Promoters: 'promoter' };
   // one logo per name and type: the newest shared one wins, then the built-in one (same order the passport uses)
   const all = () => { const seen = new Set(), out = [];

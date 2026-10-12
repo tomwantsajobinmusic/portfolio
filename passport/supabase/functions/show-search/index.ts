@@ -2,6 +2,7 @@
 // Searches setlist.fm for past shows (worldwide) without exposing the API key to the browser.
 //   GET ?q=mau p pacha          -> shows matching an artist + venue/city words
 //   GET ?venueId=..&date=yyyy-mm-dd -> everyone setlist.fm has playing that venue that day (the lineup)
+//   GET ?venue=Pier 80&city=San Francisco&year=2026[&from=mm-dd&to=mm-dd] -> every day with sets at that venue that year, lineups grouped by day (festivals)
 // Secret needed: SETLISTFM_API_KEY (Supabase → Edge Functions → Secrets).
 
 const API = 'https://api.setlist.fm/rest/1.0';
@@ -78,6 +79,18 @@ async function search(q: string): Promise<Row[]> {
   return rows(data?.setlist || []);
 }
 
+async function festivalDays(venue: string, city: string, year: string, from = '', to = ''): Promise<Row[]> {
+  const all: any[] = [];
+  for (let p = 1; p <= 6; p++) {
+    const data = await sf('/search/setlists', { venueName: venue, cityName: city, year, p: String(p) });
+    const list = data?.setlist || []; all.push(...list);
+    if (!data || data.page * data.itemsPerPage >= data.total) break;
+    await sleep(550);
+  }
+  const inWindow = (iso: string) => { const md = iso.slice(5); return (!from || md >= from) && (!to || md <= to); };
+  return rows(all).filter((r) => inWindow(r.d)).sort((a, b) => a.d.localeCompare(b.d));
+}
+
 async function lineup(venueId: string, date: string): Promise<string[]> {
   const names: string[] = [];
   for (let p = 1; p <= 3; p++) {
@@ -95,6 +108,7 @@ Deno.serve(async (req) => {
   if (!KEY) return json({ error: 'missing SETLISTFM_API_KEY secret' }, 500);
   const u = new URL(req.url), q = (u.searchParams.get('q') || '').slice(0, 80);
   try {
+    if (u.searchParams.get('venue') && u.searchParams.get('year')) return json({ events: await festivalDays(u.searchParams.get('venue')!, u.searchParams.get('city') || '', u.searchParams.get('year')!, u.searchParams.get('from') || '', u.searchParams.get('to') || '') });
     if (u.searchParams.get('venueId') && u.searchParams.get('date')) return json({ artists: await lineup(u.searchParams.get('venueId')!, u.searchParams.get('date')!) });
     return json({ events: (await search(q)).slice(0, 40) });
   } catch (e) {

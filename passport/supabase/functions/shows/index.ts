@@ -22,10 +22,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function sf(path: string, params: Record<string, string>) {
   const url = new URL(API + path);
   Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, v));
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const r = await fetch(url, { headers: { 'x-api-key': KEY, Accept: 'application/json' } });
     if (r.status === 404) return null; // setlist.fm answers "no results" with 404
-    if (r.status === 429) { await sleep(700); continue; }
+    if (r.status === 429) { await sleep(800 * (attempt + 1)); continue; }
     if (!r.ok) throw new Error('setlist.fm ' + r.status);
     return await r.json();
   }

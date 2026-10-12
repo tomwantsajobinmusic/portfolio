@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791843590';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791843590';
+import * as db from './store.js?v=1791843719';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791843719';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -383,7 +383,8 @@ async function editor(existing) {
     festBusy = true; showResults();
     const cy = new Date().getFullYear(), out = [];
     await Promise.all(hits.map(async f => {
-      const years = await Promise.all([cy, cy - 1, cy - 2].map(y => db.festivalDays({ venue: f.venue, city: f.cityQ, year: y, from: f.from, to: f.to }).catch(() => [])));
+      const years = []; // one year at a time: setlist.fm cuts answers short when asked too fast
+      for (const y of [cy, cy - 1, cy - 2]) years.push(await db.festivalDays({ venue: f.venue, city: f.cityQ, year: y, from: f.from, to: f.to }).catch(() => []));
       [cy, cy - 1, cy - 2].forEach((y, yi) => {
         const known = (f.dates || {})[y] || [], got = years[yi].filter(r => r.a.length >= 3);
         const poster = (f.lineups || {})[y] || [];

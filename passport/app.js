@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791836863';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791836863';
+import * as db from './store.js?v=1791842336';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791842336';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -39,6 +39,15 @@ const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').t
 const coreKey = s => keyOf(String(s || '').replace(/\b(19|20)\d\d\b/g, '').replace(/\b(music|arts?|and|festival|fest|weekend ?\d?|presents|the|las vegas|ibiza|official)\b/gi, ' '));
 const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (!k) return null; const L = (LOGOS || []).filter(l => !cats || cats.includes(l.cat));
   return L.find(l => l.key === k) || L.find(l => c.length > 3 && coreKey(l.name) === c) || L.find(l => l.key.length > 4 && (k.startsWith(l.key) || (k.length > 6 && l.key.startsWith(k)))) || null; };
+
+// The main logo plus any alternates saved as "<name> alt", "<name> alternate", "<name> 2", "<name> icon"…
+const ALT_TAIL = /^(alt|alternate|alternative|secondary|v?\d+|wordmark|icon|mark|logo|old|new|classic|white|black|text)+$/;
+const logosFor = (name, cats) => {
+  const main = logoFor(name, cats); if (!main) return [];
+  const bases = [...new Set([main.key, keyOf(name), coreKey(name)])].filter(b => b && b.length > 2);
+  const alts = (LOGOS || []).filter(l => l !== main && (!cats || cats.includes(l.cat)) && bases.some(b => l.key.startsWith(b) && ALT_TAIL.test(l.key.slice(b.length))));
+  return [main, ...alts.filter((l, i, a) => a.findIndex(x => x.src === l.src) === i)];
+};
 
 /* ---------- router ---------- */
 const routes = { gate, cover, apply, signin, setup, book, editor, logodir };
@@ -442,8 +451,9 @@ async function editor(existing) {
   // page art choices: venue/festival logo, artist logos, upload, none
   let artChoice = e.bg?.url ? { kind: 'keep' } : null;
   const drawArts = () => {
-    const opts = []; const vl = logoFor(e.title, ['Festivals', 'Promoters', 'Clubs', 'Venues']) || logoFor(e.venue, ['Clubs', 'Venues', 'Festivals']); if (vl) opts.push({ label: vl.name, src: vl.src });
-    e.artists.forEach(a => { const lg = logoFor(a, ['DJs']); if (lg && !opts.some(o => o.src === lg.src)) opts.push({ label: lg.name, src: lg.src }); });
+    const opts = [], add = lg => { if (lg && !opts.some(o => o.src === lg.src)) opts.push({ label: lg.name, src: lg.src }); };
+    const vls = logosFor(e.title, ['Festivals', 'Promoters', 'Clubs', 'Venues']); (vls.length ? vls : logosFor(e.venue, ['Clubs', 'Venues', 'Festivals'])).forEach(add);
+    e.artists.forEach(a => logosFor(a, ['DJs']).forEach(add));
     $('#arts').innerHTML = (e.bg?.url ? `<button type="button" data-k="keep" aria-pressed="${artChoice?.kind === 'keep'}"><img src="${esc(e.bg.url)}" alt="Current art"></button>` : '') +
       opts.map((o, i) => `<button type="button" data-o="${i}" aria-pressed="${artChoice?.src === o.src}" title="${esc(o.label)}"><img src="${esc(o.src)}" alt="${esc(o.label)}"></button>`).join('') +
       `<label class="filebtn" style="aspect-ratio:1;border:1px dashed var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font:500 11px var(--sans);color:var(--muted)">${artChoice?.kind === 'upload' ? 'PHOTO ADDED ✓' : 'UPLOAD<br>PHOTO OR LOGO'}<input type="file" accept="image/*" id="up"></label>` +

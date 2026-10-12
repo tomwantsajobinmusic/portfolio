@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791844105';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791844105';
+import * as db from './store.js?v=1791845613';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791845613';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -393,8 +393,8 @@ async function editor(existing) {
         const poster = (f.lineups || {})[y] || [];
         const days = [...new Set([...known, ...got.map(r => r.d)])].sort();
         if (!days.length) return;
-        const dayRows = days.map((d, i) => { const r = got.find(x => x.d === d); return { id: 'fest:' + f.name + ':' + d, n: f.name + ' ' + y + (days.length > 1 ? ' · Day ' + (i + 1) : ''), t: f.name, d, v: f.venue, l: f.city, a: r ? r.a : poster.slice(), f: 1, src: 'festival', day: days.length > 1 ? i + 1 : null }; });
-        if (days.length > 1) out.push({ id: 'fest:' + f.name + ':' + y, n: f.name + ' ' + y + ' · Whole festival', t: f.name, d: days[0], v: f.venue, l: f.city, a: [...new Set([...dayRows.flatMap(r => r.a), ...poster])], f: 1, src: 'festival', day: null });
+        const dayRows = days.map((d, i) => { const r = got.find(x => x.d === d); return { id: 'fest:' + f.name + ':' + d, n: f.name + ' ' + y + (days.length > 1 ? ' · Day ' + (i + 1) : ''), t: f.name, d, v: f.venue, l: f.city, a: r ? [...r.a, ...poster.filter(x => !r.a.some(y => keyOf(y) === keyOf(x)))] : poster.slice(), f: 1, src: 'festival', day: days.length > 1 ? i + 1 : null }; });
+        if (days.length > 1) out.push({ id: 'fest:' + f.name + ':' + y, n: f.name + ' ' + y + ' · Whole festival', t: f.name, d: days[0], v: f.venue, l: f.city, a: dayRows.flatMap(r => r.a).filter((x, i, all) => all.findIndex(y => keyOf(y) === keyOf(x)) === i), f: 1, src: 'festival', day: null });
         out.push(...dayRows);
       });
     }));

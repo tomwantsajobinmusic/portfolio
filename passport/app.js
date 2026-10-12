@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791842336';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791842336';
+import * as db from './store.js?v=1791843590';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791843590';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -386,10 +386,11 @@ async function editor(existing) {
       const years = await Promise.all([cy, cy - 1, cy - 2].map(y => db.festivalDays({ venue: f.venue, city: f.cityQ, year: y, from: f.from, to: f.to }).catch(() => [])));
       [cy, cy - 1, cy - 2].forEach((y, yi) => {
         const known = (f.dates || {})[y] || [], got = years[yi].filter(r => r.a.length >= 3);
+        const poster = (f.lineups || {})[y] || [];
         const days = [...new Set([...known, ...got.map(r => r.d)])].sort();
         if (!days.length) return;
-        const dayRows = days.map((d, i) => { const r = got.find(x => x.d === d); return { id: 'fest:' + f.name + ':' + d, n: f.name + ' ' + y + (days.length > 1 ? ' · Day ' + (i + 1) : ''), t: f.name, d, v: f.venue, l: f.city, a: r ? r.a : [], f: 1, src: 'festival', day: days.length > 1 ? i + 1 : null }; });
-        if (days.length > 1) out.push({ id: 'fest:' + f.name + ':' + y, n: f.name + ' ' + y + ' · Whole festival', t: f.name, d: days[0], v: f.venue, l: f.city, a: [...new Set(dayRows.flatMap(r => r.a))], f: 1, src: 'festival', day: null });
+        const dayRows = days.map((d, i) => { const r = got.find(x => x.d === d); return { id: 'fest:' + f.name + ':' + d, n: f.name + ' ' + y + (days.length > 1 ? ' · Day ' + (i + 1) : ''), t: f.name, d, v: f.venue, l: f.city, a: r ? r.a : poster.slice(), f: 1, src: 'festival', day: days.length > 1 ? i + 1 : null }; });
+        if (days.length > 1) out.push({ id: 'fest:' + f.name + ':' + y, n: f.name + ' ' + y + ' · Whole festival', t: f.name, d: days[0], v: f.venue, l: f.city, a: [...new Set([...dayRows.flatMap(r => r.a), ...poster])], f: 1, src: 'festival', day: null });
         out.push(...dayRows);
       });
     }));

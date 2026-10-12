@@ -1,5 +1,5 @@
 {
- "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet.",
+ "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet. lineups = full poster lineup per year, used when setlist.fm has no sets logged.",
  "festivals": [
   {
    "name": "Portola",
@@ -330,6 +330,94 @@
    "from": "07-25",
    "to": "08-15",
    "dates": {}
+  },
+  {
+   "name": "Wicked Oaks",
+   "aliases": [
+    "wicked oaks festival",
+    "wicked oaks fest"
+   ],
+   "venue": "Carson Creek Ranch",
+   "cityQ": "Austin",
+   "city": "Austin, TX",
+   "from": "10-15",
+   "to": "11-05",
+   "dates": {
+    "2025": [
+     "2025-10-25",
+     "2025-10-26"
+    ]
+   },
+   "lineups": {
+    "2025": [
+     "Bob Moses",
+     "Cloonee",
+     "Eric Prydz",
+     "Gryffin",
+     "Kaskade",
+     "Martin Garrix",
+     "Bunt.",
+     "LP Giobbi",
+     "Kasablanca",
+     "Max Styler",
+     "Angrybaby",
+     "Jigitz",
+     "Carola",
+     "Jackie Hollander",
+     "Jev",
+     "Shima",
+     "Kai Wachi",
+     "NGHTMRE",
+     "Kompany",
+     "Svdden Death",
+     "YVM3",
+     "Nimda",
+     "Voyd",
+     "Eptic",
+     "Flux Pavilion",
+     "Hedex",
+     "Infekt",
+     "Samplifire",
+     "Must Die!",
+     "Syzy",
+     "Simula",
+     "Automhate",
+     "Mad Dubz",
+     "Codd Dubz",
+     "Pyke",
+     "PhaseOne",
+     "HVDES",
+     "Prosecute",
+     "Stoog3s",
+     "Witching Hour",
+     "Vampa",
+     "Jeanie",
+     "Akeos",
+     "Hexx",
+     "Aweminus",
+     "Mythm",
+     "Bejalvin",
+     "Kerosene",
+     "Warlord",
+     "Neonix",
+     "Phiso",
+     "Otsukare",
+     "STVG",
+     "Vanfleet",
+     "Autograf",
+     "Classmatic",
+     "Dark Heart",
+     "Jaden Thompson",
+     "Luuk Van Dijk",
+     "Mahony",
+     "Maxinne",
+     "Sistek",
+     "SOSA",
+     "Surf Mesa",
+     "Tony Romera",
+     "Wenzday"
+    ]
+   }
   }
  ]
 }

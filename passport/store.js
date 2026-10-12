@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791825610';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791826958';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -43,6 +43,7 @@ export async function scanSite(site) {
   const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ scan: site }), signal: AbortSignal.timeout(20000) });
   const j = await r.json().catch(() => ({})); return j.candidates || [];
 }
+export async function isAdmin() { if (!LIVE) return false; const u = await currentUser(); if (!u) return false; const { data } = await sb.from('app_admins').select('user_id').eq('user_id', u.id).maybeSingle(); return !!data; }
 export async function myId() { const u = await currentUser(); return u ? u.id : null; }
 
 /* ---------- beta question: skip it on networks where someone has signed in ---------- */

@@ -159,3 +159,6 @@ button{cursor:pointer}
 .lgrid figcaption{padding:5px 6px;font:600 11px var(--sans);line-height:1.25;overflow-wrap:anywhere}
 .lgrid figcaption small{display:block;font:500 9px var(--mono);letter-spacing:.06em;color:var(--muted);margin-top:2px}
 .lgrid .rm{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(10,49,97,.85);color:#fff;font:600 15px/1 var(--sans)}
+.lgrid .acts{display:flex;gap:4px;padding:0 6px 6px}
+.lgrid .acts .sw{flex:1;border:1.5px solid var(--navy);background:transparent;color:var(--navy);border-radius:4px;padding:5px 0;font:700 10px var(--sans);letter-spacing:.12em}
+.lgrid .acts .rm{position:static;flex:none;width:28px;height:auto;border-radius:4px;font-size:16px}

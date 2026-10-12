@@ -123,3 +123,12 @@ alter table public.known_networks enable row level security; -- no policies: onl
 -- 9. Promoter / brand logos (Insomniac, Disco Donnie Presents, Teletech...)
 alter table public.logos drop constraint if exists logos_kind_check;
 alter table public.logos add constraint logos_kind_check check (kind in ('dj', 'festival', 'club', 'venue', 'promoter'));
+
+-- 10. Directory admins (Thomas) can remove or swap any logo.
+create table if not exists public.app_admins (user_id uuid primary key references auth.users on delete cascade);
+alter table public.app_admins enable row level security;
+drop policy if exists "see own admin row" on public.app_admins;
+create policy "see own admin row" on public.app_admins for select to authenticated using (user_id = auth.uid());
+insert into public.app_admins (user_id) select id from public.profiles where username = 'thomasbrown' on conflict do nothing;
+drop policy if exists "admins remove any logo" on public.logos;
+create policy "admins remove any logo" on public.logos for delete to authenticated using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));

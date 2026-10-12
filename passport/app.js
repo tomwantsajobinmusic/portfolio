@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791825610';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791825610';
+import * as db from './store.js?v=1791826958';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791826958';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -485,11 +485,15 @@ async function editor(existing) {
 /* ---------- 7. logo directory portal: add DJ / club / venue / festival / promoter logos by link ---------- */
 const KIND_LABEL = { dj: 'DJ / ARTIST', club: 'CLUB', venue: 'VENUE', festival: 'FESTIVAL', promoter: 'PROMOTER / BRAND' };
 async function logodir() {
-  const me = await db.myId();
+  const me = await db.myId(), admin = await db.isAdmin();
   let shared = await db.listLogos().catch(() => []), filter = 'all', query = '', candidates = [], previewOK = false, fileBlob = null;
   const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
   const KINDOF = { DJs: 'dj', Clubs: 'club', Venues: 'venue', Festivals: 'festival', Promoters: 'promoter' };
-  const all = () => [...shared.map(l => ({ ...l, mine: l.added_by === me })), ...base.map(l => ({ name: l.name, kind: KINDOF[l.cat] || 'dj', key: keyOf(l.name), url: 'data/' + l.file, builtin: true }))];
+  // one logo per name and type: the newest shared one wins, then the built-in one (same order the passport uses)
+  const all = () => { const seen = new Set(), out = [];
+    for (const l of [...shared.map(l => ({ ...l, mine: l.added_by === me })), ...base.map(l => ({ name: l.name, kind: KINDOF[l.cat] || 'dj', key: keyOf(l.name), url: 'data/' + l.file, builtin: true }))]) {
+      const id = l.kind + ':' + l.key; if (seen.has(id)) continue; seen.add(id); out.push({ ...l, editable: admin || l.mine }); }
+    return out; };
   app.innerHTML = `<section class="screen sheet paper logodir">
     <button class="back" id="bk">← BOOK</button>
     <p class="title">LOGO DIRECTORY</p>
@@ -511,6 +515,7 @@ async function logodir() {
         <label class="btn small ghost filebtn" style="margin-top:10px">CHOOSE FILE<input type="file" accept="image/*" id="lFile"></label>
       </details>
       <div class="lprev hidden" id="prev"><div class="on-light"><img id="pv1" alt=""></div><div class="on-dark"><img id="pv2" alt=""></div></div>
+      <button type="button" class="btn small ghost hidden" id="lClear" style="margin-top:10px">CLEAR THE BACKGROUND</button>
       <p class="hint" id="lMsg" style="margin:10px 0 0"></p>
       <button class="btn" id="lAdd" disabled style="margin-top:12px">ADD TO DIRECTORY</button>
     </div>
@@ -527,16 +532,33 @@ async function logodir() {
 
   // preview: the logo shows on light and dark paper so a wrong or invisible image is obvious before it's saved
   const preview = src => { previewOK = false; canAdd();
-    if (!src) { $('#prev').classList.add('hidden'); msg(''); return; }
+    if (!src) { $('#prev').classList.add('hidden'); $('#lClear').classList.add('hidden'); msg(''); return; }
     $('#prev').classList.remove('hidden'); msg('Loading preview…');
-    const ok = () => { previewOK = true; msg('Is this the right logo? If yes, add it.'); canAdd(); };
-    const bad = () => { $('#prev').classList.add('hidden'); msg('That link didn’t load as an image. Make sure it’s the image address, not the page address.', true); };
+    const ok = () => { previewOK = true; $('#lClear').classList.remove('hidden'); msg('Is this the right logo? If yes, add it. Stuck in a white or black box? Clear the background first.'); canAdd(); };
+    const bad = () => { $('#prev').classList.add('hidden'); $('#lClear').classList.add('hidden'); msg('That link didn’t load as an image. Make sure it’s the image address, not the page address.', true); };
     $('#pv1').onload = ok; $('#pv1').onerror = bad; $('#pv1').src = src; $('#pv2').src = src; };
+  // make a solid background see-through: take the color in the corners and clear everything close to it, softening the edges
+  $('#lClear').onclick = async ev => { const b = ev.currentTarget; b.disabled = true;
+    try {
+      const src = fileBlob ? URL.createObjectURL(fileBlob) : $('#lUrl').value.trim();
+      const im = await new Promise((res, rej) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
+      const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+      const id = x.getImageData(0, 0, c.width, c.height), d = id.data, W = c.width, H = c.height;
+      const px = (i) => [d[i], d[i + 1], d[i + 2]], corners = [0, (W - 1) * 4, (H - 1) * W * 4, ((H - 1) * W + W - 1) * 4].filter(i => d[i + 3] > 200).map(px);
+      if (!corners.length) { msg('This logo already has a see-through background.'); b.disabled = false; return; }
+      const bg = [0, 1, 2].map(k => corners.reduce((a, cc) => a + cc[k], 0) / corners.length);
+      for (let i = 0; i < d.length; i += 4) { const dist = Math.hypot(d[i] - bg[0], d[i + 1] - bg[1], d[i + 2] - bg[2]);
+        if (dist < 40) d[i + 3] = 0; else if (dist < 90) d[i + 3] = Math.min(d[i + 3], Math.round((dist - 40) / 50 * 255)); }
+      x.putImageData(id, 0, 0);
+      fileBlob = await new Promise(r => c.toBlob(r, 'image/png')); preview(URL.createObjectURL(fileBlob));
+      setTimeout(() => msg('Background cleared. Check both previews, then add it.'), 300);
+    } catch (e) { msg('Couldn’t edit that image here (the site blocks it). Download it and use “upload an image file”, then clear the background.', true); }
+    b.disabled = false; };
   let t = 0;
   $('#lUrl').oninput = () => { fileBlob = null; clearTimeout(t); t = setTimeout(() => preview($('#lUrl').value.trim()), 350); };
   $('#lFile').onchange = ev => { const f = ev.target.files[0]; if (!f) return; if (f.size > 4e6) return msg('That file is over 4 MB.', true); fileBlob = f; $('#lUrl').value = ''; preview(URL.createObjectURL(f)); };
   const dupe = () => { const k = keyOf($('#lName').value), kind = $('#lKind').value; const hit = k && all().find(l => l.key === k && l.kind === kind);
-    $('#dupe').innerHTML = hit ? `<div class="dupe"><img src="${esc(hit.url)}" alt=""><span>${esc(hit.name)} already has a logo${hit.mine ? '. Adding this one replaces yours.' : '. Add yours only if that one is wrong or outdated.'}</span></div>` : ''; };
+    $('#dupe').innerHTML = hit ? `<div class="dupe"><img src="${esc(hit.url)}" alt=""><span>${esc(hit.name)} already has a logo${hit.editable ? '. Adding this one swaps it out.' : '. Add yours only if that one is wrong or outdated.'}</span></div>` : ''; };
   $('#lName').oninput = () => { dupe(); canAdd(); }; $('#lKind').onchange = dupe;
 
   $('#lScan').onclick = async ev => { let s = $('#lSite').value.trim(); if (!s) return; if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
@@ -550,11 +572,11 @@ async function logodir() {
     const name = $('#lName').value.trim(), kind = $('#lKind').value, b = ev.currentTarget; if (!name || !previewOK) return;
     b.disabled = true; b.textContent = 'ADDING…'; msg('');
     try {
-      const k = keyOf(name), old = shared.filter(l => l.key === k && l.kind === kind && l.added_by === me);
+      const k = keyOf(name), old = shared.filter(l => l.key === k && l.kind === kind && (admin || l.added_by === me));
       const url = fileBlob ? await db.uploadImage(fileBlob, 'logo-src') : $('#lUrl').value.trim();
       await db.addLogo({ name, kind, url });
       for (const o of old) await db.deleteLogo(o.id).catch(() => {});
-      toast(name + ' added. Thanks!');
+      toast(name + (old.length ? ' swapped.' : ' added. Thanks!'));
       shared = await db.listLogos().catch(() => shared); await logos(true);
       $('#lName').value = ''; $('#lUrl').value = ''; $('#lSite').value = ''; $('#cands').innerHTML = ''; fileBlob = null; $('#dupe').innerHTML = ''; preview(''); drawGrid();
     } catch (x) { msg(x.message || 'Could not add that logo.', true); }
@@ -564,7 +586,11 @@ async function logodir() {
   const drawGrid = () => {
     const q = keyOf(query), list = all().filter(l => (filter === 'all' || l.kind === filter) && (!q || l.key.includes(q))).sort((a, b) => a.name.localeCompare(b.name));
     $('#cnt').textContent = list.length;
-    $('#grid').innerHTML = list.map(l => `<figure><div><img src="${esc(l.url)}" alt="" loading="lazy"></div><figcaption>${esc(l.name)}<small>${esc(KIND_LABEL[l.kind] || '')}</small></figcaption>${l.mine ? `<button type="button" class="rm" data-id="${esc(l.id)}" aria-label="Remove ${esc(l.name)}">×</button>` : ''}</figure>`).join('') || '<p class="hint">Nothing yet. Add the first one above.</p>';
+    $('#grid').innerHTML = list.map(l => `<figure><div><img src="${esc(l.url)}" alt="" loading="lazy"></div><figcaption>${esc(l.name)}<small>${esc(KIND_LABEL[l.kind] || '')}</small></figcaption>${l.editable ? `<div class="acts"><button type="button" class="sw" data-n="${esc(l.name)}" data-k="${esc(l.kind)}">SWAP</button>${l.builtin ? '' : `<button type="button" class="rm" data-id="${esc(l.id)}" aria-label="Remove ${esc(l.name)}">×</button>`}</div>` : ''}</figure>`).join('') || '<p class="hint">Nothing yet. Add the first one above.</p>';
+    $$('#grid .sw').forEach(b => b.onclick = () => {
+      $('#lName').value = b.dataset.n; $('#lKind').value = b.dataset.k; fileBlob = null; $('#lUrl').value = ''; preview(''); dupe(); canAdd();
+      $('#lName').closest('.section').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => $('#lUrl').focus({ preventScroll: true }), 400);
+      msg('Paste the new logo for ' + b.dataset.n + ' below. The old one is replaced when you add it.'); });
     $$('#grid .rm').forEach(b => b.onclick = async () => { if (!confirm('Remove this logo from the directory?')) return; try { await db.deleteLogo(b.dataset.id); shared = shared.filter(l => l.id !== b.dataset.id); await logos(true); drawGrid(); } catch (x) { toast(x.message); } });
   };
   $('#lq').oninput = ev => { query = ev.target.value; drawGrid(); };

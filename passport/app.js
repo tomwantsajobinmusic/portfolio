@@ -268,7 +268,7 @@ async function editor(existing) {
     <div class="section"><h3>1. FIND THE SHOW</h3>
       <label class="field"><span>SEARCH FESTIVALS, ARTISTS, VENUES, CITIES</span><input id="q" placeholder="ACL, Fisher, Concourse, Austin…" autocomplete="off"></label>
       <div class="results" id="res" role="listbox" aria-label="Shows"></div>
-      <p class="hint" style="margin-top:8px">Show data from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a> covers today and upcoming shows. For older ones, fill it in below.</p>
+      <p class="hint" style="margin-top:8px">Past shows from <a href="https://www.setlist.fm" target="_blank" rel="noopener">setlist.fm</a>, upcoming from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a>. Search the artist and venue, like “mau p pacha”. Not there? Fill it in below.</p>
     </div>
 
     <div class="section"><h3>2. THE DETAILS</h3>
@@ -304,18 +304,31 @@ async function editor(existing) {
   $('#bk').onclick = () => go('book', existing ? state.entries.indexOf(existing) + 1 : 0);
 
   // search
-  const res = $('#res'); let picked = null;
+  const res = $('#res'); let picked = null, past = [], pastQ = '', pastBusy = false, ctrl = null, timer = 0;
+  const fetchPast = q => { clearTimeout(timer); if (ctrl) ctrl.abort(); if (q.length < 3) { past = []; pastQ = ''; return; }
+    timer = setTimeout(async () => { ctrl = new AbortController(); pastBusy = true; showResults();
+      try { past = await db.searchPast(q, ctrl.signal); pastQ = q; } catch (x) { if (x.name !== 'AbortError') { past = []; pastQ = q; } } pastBusy = false; showResults(); }, 450); };
+  const pick = async x => { picked = x;
+    e.event_id = x.src ? null : x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? x.a.slice() : [];
+    $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
+    showResults(); drawSets(); drawArts(); drawStampChoices();
+    if (x.src && x.venueId) { try { const all = await db.pastLineup(x.venueId, x.d); if (all.length) { e.lineup = [...new Set([...all, ...e.lineup])]; if (all.length > 4 && e.kind !== 'festival') { e.kind = 'festival'; $('#k').value = 'festival'; } drawSets(); drawArts(); drawStampChoices(); } } catch (err) {} } };
   const showResults = async () => {
     const q = $('#q').value.trim().toLowerCase(); if (!q) { res.innerHTML = ''; res.style.display = 'none'; return; }
     const D = await events(), words = q.split(/\s+/);
-    const rows = D.events.filter(x => words.every(w => x._s.includes(w))).sort((a, b) => (b.n.toLowerCase().includes(q) - a.n.toLowerCase().includes(q)) || (a.d < b.d ? -1 : 1)).slice(0, 40);
-    res.style.display = ''; res.innerHTML = rows.length ? rows.map((x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n || x.a.slice(0, 3).join(', '))}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)} · ${x.a.length} artists</small></button>`).join('') : '<p class="hint" style="padding:10px">No matches. Fill it in below.</p>';
-    $$('#res button').forEach(b => b.onclick = () => { const x = rows[+b.dataset.i]; picked = x;
-      e.event_id = x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = [];
-      $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
-      showResults(); drawSets(); drawArts(); drawStampChoices(); });
+    const up = D.events.filter(x => words.every(w => x._s.includes(w))).sort((a, b) => (b.n.toLowerCase().includes(q) - a.n.toLowerCase().includes(q)) || (a.d < b.d ? -1 : 1)).slice(0, 25);
+    const old = pastQ === q ? past.slice().sort((a, b) => (a.d < b.d ? 1 : -1)) : [];
+    const rows = [...old, ...up];
+    const item = (x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n || (x.src ? x.a.join(', ') + ' at ' + x.v : x.a.slice(0, 3).join(', ')))}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)}${x.src ? '' : ' · ' + x.a.length + ' artists'}</small></button>`;
+    const head = t => `<p class="hint" style="padding:6px 12px;margin:0;font:600 10px var(--mono);letter-spacing:.12em;background:rgba(10,49,97,.06)">${t}</p>`;
+    res.style.display = '';
+    res.innerHTML = (old.length ? head('PAST SHOWS · SETLIST.FM') + old.map((x, i) => item(x, i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
+      (up.length ? head('TODAY AND UPCOMING · EDMTRAIN') + up.map((x, i) => item(x, old.length + i)).join('') : '') +
+      (!old.length && !up.length && !pastBusy ? '<p class="hint" style="padding:10px">No matches. Try the artist and the venue, like “mau p pacha”, or fill it in below.</p>' : '');
+    $$('#res button').forEach(b => b.onclick = () => pick(rows[+b.dataset.i]));
   };
-  $('#q').addEventListener('input', showResults); showResults();
+  $('#q').addEventListener('input', () => { fetchPast($('#q').value.trim().toLowerCase()); showResults(); });
+
 
   // sets
   const drawSets = () => { const all = [...new Set([...(e.lineup || []), ...(e.artists || [])])];

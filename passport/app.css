@@ -57,7 +57,8 @@ button{cursor:pointer}
 .num{position:absolute;top:max(14px,env(safe-area-inset-top));left:18px;font:500 30px/1 var(--mono);letter-spacing:.02em;z-index:3}
 .art{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);width:86%;max-height:52%;object-fit:contain;pointer-events:none}
 .stamps{position:absolute;inset:0;z-index:2}
-.stamps img{position:absolute;width:44%;transform-origin:center;mix-blend-mode:multiply;user-select:none;-webkit-user-drag:none;touch-action:none}
+.stamps img{position:absolute;width:44%;transform-origin:center;mix-blend-mode:multiply;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.stamps.editing img{pointer-events:auto;touch-action:none}
 .stamps.editing img{cursor:grab;outline:1px dashed transparent}
 .stamps.editing img.sel{outline-color:rgba(10,49,97,.6)}
 .facts{position:absolute;left:20px;right:20px;top:62%;z-index:1}
@@ -122,3 +123,12 @@ button{cursor:pointer}
 .spin{opacity:.6;pointer-events:none}
 @media (min-width:480px){ .phone{margin-top:0;box-shadow:0 0 0 1px #000,0 30px 80px rgba(0,0,0,.5)} }
 @media (prefers-reduced-motion:no-preference){ .screen,.page{animation:fade .25s ease} @keyframes fade{from{opacity:0}to{opacity:1}} }
+
+/* book feel: the cover, page turns and a spine shadow */
+.book{perspective:1600px;background:#0b1424}
+.page{transform-origin:left center;will-change:transform;box-shadow:inset 14px 0 18px -14px rgba(0,0,0,.28)}
+.page.covr{background:var(--navy);color:var(--gold);display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;padding:max(64px,env(safe-area-inset-top)) 24px 120px;box-shadow:inset -10px 0 24px -12px rgba(0,0,0,.6)}
+.page.covr h1{font:400 40px/1.1 var(--serif);margin:40px 0 0}
+.page.covr img{width:72%;max-width:300px}
+.page.covr p{font:italic 400 18px var(--serif);opacity:.8;margin:0}
+@media (prefers-reduced-motion:reduce){.page{transform:none!important}}

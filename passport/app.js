@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791785939';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791785939';
+import * as db from './store.js?v=1791786308';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791786308';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -217,6 +217,7 @@ async function book(openIndex) {
   const hl = (p.highlighted && p.highlighted.length ? p.highlighted.map(id => E.find(e => e.id === id)).filter(Boolean) : E.slice(-3).reverse()).slice(0, 3);
   const [m1, m2] = mrz(p);
   app.innerHTML = `<div class="book" id="bk">
+    <article class="page covr" data-i="cover"><h1>Rave Passport</h1><img src="assets/seal-gold.png" alt="The rave passport crest"><p>${esc(p.name || '')}</p></article>
     <article class="page" data-i="0">
       <div class="inner pf">
         <p class="pf-handle">@${esc(p.username || '')}</p>
@@ -261,13 +262,19 @@ async function book(openIndex) {
   // paging
   const bk = $('#bk'), dots = $('#dots');
   const cur = () => Math.round(bk.scrollLeft / bk.clientWidth);
-  const upd = () => { const i = cur(); dots.textContent = (i + 1) + ' / ' + (E.length + 1); if (!DEMO) $('#edit').classList.toggle('hidden', i === 0); };
+  // page 0 is the cover, 1 the profile, 2+ the shows
+  const pages = [...bk.querySelectorAll('.page')];
+  const turn = () => { const w = bk.clientWidth, x = bk.scrollLeft; pages.forEach((pg, i) => { const d = (i * w - x) / w; // -1..1 around the open page
+      if (Math.abs(d) >= 1) { pg.style.transform = ''; return; }
+      pg.style.transformOrigin = d < 0 ? 'right center' : 'left center';
+      pg.style.transform = `rotateY(${(-d * 32).toFixed(2)}deg) scale(${(1 - Math.abs(d) * .06).toFixed(3)})`; pg.style.filter = `brightness(${(1 - Math.abs(d) * .25).toFixed(3)})`; }); };
+  const upd = () => { const i = cur(); dots.textContent = i === 0 ? 'COVER' : i === 1 ? 'PROFILE' : (i - 1) + ' / ' + E.length; if (!DEMO) $('#edit').classList.toggle('hidden', i < 2); $('#bar').style.background = i === 0 ? 'none' : ''; turn(); };
   bk.addEventListener('scroll', () => requestAnimationFrame(upd)); upd();
-  if (openIndex) requestAnimationFrame(() => { bk.scrollLeft = openIndex * bk.clientWidth; upd(); });
+  bk.style.scrollBehavior = 'auto'; bk.scrollLeft = ((openIndex || 0) + 1) * bk.clientWidth; requestAnimationFrame(() => { bk.scrollLeft = ((openIndex || 0) + 1) * bk.clientWidth; upd(); });
   if (DEMO) { $('#own').onclick = () => { DEMO = false; history.replaceState(null, '', location.pathname); start(); }; if (openIndex == null) toast('Swipe to flip through ' + (state.profile.name ? state.profile.name.split(' ')[0] + '’s' : 'this') + ' passport.', 3000); return; }
   $('#prof').onclick = () => go('setup');
   $('#add').onclick = () => go('editor', null);
-  $('#edit').onclick = () => { const i = cur(); if (i > 0) go('editor', E[i - 1]); };
+  $('#edit').onclick = () => { const i = cur(); if (i > 1) go('editor', E[i - 2]); };
   if (!E.length) toast('Tap “+ Add show” to stamp your first page.', 3500);
 }
 async function drawStamps(host, list, editing) {

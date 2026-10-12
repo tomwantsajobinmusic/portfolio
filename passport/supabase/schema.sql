@@ -108,3 +108,6 @@ drop policy if exists "logos readable" on public.logos;
 create policy "logos readable" on public.logos for select using (true);
 drop policy if exists "remove own logo" on public.logos;
 create policy "remove own logo" on public.logos for delete to authenticated using (added_by = auth.uid());
+
+-- 7. Optional festival day pages (Day 1, Day 2...). Null means the whole festival.
+alter table public.entries add column if not exists day smallint check (day between 1 and 7);

@@ -213,7 +213,8 @@ const mrz = p => { const n = (p.name || 'RAVER').toUpperCase().replace(/[^A-Z ]/
 async function book(openIndex) {
   await logos();
   const p = state.profile, E = state.entries, tb = p.theme || {};
-  const fests = E.filter(e => e.kind === 'festival').length + (tb.fests_before || 0), raves = E.length + (tb.raves_before || 0);
+  // day pages of the same festival (same name, same year) count as one festival
+  const fests = new Set(E.filter(e => e.kind === 'festival').map(e => e.day ? 'd:' + e.title.toLowerCase().trim() + ':' + String(e.date).slice(0, 4) : e.id)).size + (tb.fests_before || 0), raves = E.length + (tb.raves_before || 0);
   const hl = (p.highlighted && p.highlighted.length ? p.highlighted.map(id => E.find(e => e.id === id)).filter(Boolean) : E.slice(-3).reverse()).slice(0, 3);
   const [m1, m2] = mrz(p);
   app.innerHTML = `<div class="book" id="bk">
@@ -242,7 +243,7 @@ async function book(openIndex) {
       ${e.bg?.url ? `<img class="art" src="${esc(e.bg.url)}" alt="" style="${e.bg.y != null ? `top:${+e.bg.y}%;` : ''}${e.bg.s ? `width:${86 * e.bg.s}%;` : ''}">` : ''}
       <div class="stamps" data-id="${esc(e.id)}"></div>
       <div class="facts">
-        <h2>${esc(e.title)}</h2>
+        <h2>${esc(e.title)}${e.kind === 'festival' && e.day ? ` <small class="day">DAY ${+e.day}</small>` : ''}</h2>
         ${e.artists?.length ? `<p><span>${e.kind === 'festival' || e.artists.length > 1 ? 'ARTISTS' : 'LINEUP'}:</span> ${esc(e.artists.join(', '))}</p>` : ''}
         <p><span>DATE:</span> ${esc(longDate(e.date))}</p>
         <p><span>CITY:</span> ${esc(cityUpper(e.city))}</p>
@@ -308,6 +309,10 @@ async function editor(existing) {
       <div class="row2"><label class="field"><span>VENUE</span><input id="v" value="${esc(e.venue)}" maxlength="60"></label><label class="field"><span>CITY</span><input id="c" value="${esc(e.city)}" maxlength="40"></label></div>
       <div class="row2"><label class="field"><span>DATE</span><input id="d" type="date" value="${esc(e.date)}"></label>
       <label class="field"><span>TYPE</span><select id="k"><option value="show">Show</option><option value="festival">Festival</option></select></label></div>
+      <div id="dayRow" class="hidden" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label class="chip"><input type="checkbox" id="dayOn" ${e.day ? 'checked' : ''}> This page is one day of the festival</label>
+        <select id="day" aria-label="Which day" style="padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.6)" ${e.day ? '' : 'disabled'}>${[1, 2, 3, 4, 5, 6, 7].map(n => `<option value="${n}" ${+e.day === n ? 'selected' : ''}>Day ${n}</option>`).join('')}</select>
+      </div>
     </div>
 
     <div class="section"><h3>3. SETS I SAW</h3>
@@ -334,6 +339,11 @@ async function editor(existing) {
     ${isNew ? '' : '<button class="btn ghost" id="del" style="margin-top:10px">DELETE PAGE</button>'}
   </section>`;
   $('#k').value = e.kind;
+  const syncDay = () => { const f = $('#k').value === 'festival'; $('#dayRow').classList.toggle('hidden', !f); $('#day').disabled = !$('#dayOn').checked; };
+  $('#k').onchange = () => { e.kind = $('#k').value; syncDay(); drawStampChoices(); };
+  $('#dayOn').onchange = () => { syncDay(); e.day = $('#dayOn').checked ? +$('#day').value : null; drawStampChoices(); };
+  $('#day').onchange = () => { e.day = +$('#day').value; drawStampChoices(); };
+  syncDay();
   $('#bk').onclick = () => go('book', existing ? state.entries.indexOf(existing) + 1 : 0);
 
   // search
@@ -343,7 +353,7 @@ async function editor(existing) {
       try { past = await db.searchPast(q, ctrl.signal); pastQ = q; } catch (x) { if (x.name !== 'AbortError') { past = []; pastQ = q; } } pastBusy = false; showResults(); }, 450); };
   const pick = async x => { picked = x;
     e.event_id = x.src ? null : x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : isNew ? [] : e.artists;
-    $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
+    $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind; syncDay();
     if (e.kind === 'festival') chosen.delete('venue'); // festival stamp starts off; the logo is the page art instead
     await autoFestivalArt();
     showResults(); drawSets(); drawArts(); drawStampChoices(); drawMissing();
@@ -428,7 +438,7 @@ async function editor(existing) {
   const autoStamps = () => {
     const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
     const vl = e.kind === 'festival' ? logoFor(e.title, ['Festivals']) || logoFor(e.venue, ['Clubs', 'Venues']) : logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Festivals', 'Clubs', 'Venues']);
-    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
+    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
@@ -445,6 +455,7 @@ async function editor(existing) {
   $('#save').onclick = async ev => {
     const b = ev.currentTarget, err = $('#err'); err.textContent = '';
     e.title = $('#t').value.trim(); e.venue = $('#v').value.trim(); e.city = $('#c').value.trim(); e.date = $('#d').value; e.kind = $('#k').value; e.notes = $('#n').value.trim(); e.shot_it = $('#shot').checked;
+    e.day = e.kind === 'festival' && $('#dayOn').checked ? +$('#day').value : null;
     if (!e.title) return err.textContent = 'Give the page a name.'; if (!e.date) return err.textContent = 'Add the date.';
     b.disabled = true; b.textContent = 'ENGRAVING…';
     try {

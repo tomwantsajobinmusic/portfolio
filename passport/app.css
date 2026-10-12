@@ -63,6 +63,7 @@ button{cursor:pointer}
 .stamps.editing img.sel{outline-color:rgba(10,49,97,.6)}
 .facts{position:absolute;left:20px;right:20px;top:62%;z-index:1}
 .facts h2{font:600 17px var(--mono);letter-spacing:.2em;text-align:center;margin:0 0 14px;text-transform:uppercase}
+.facts h2 .day{display:inline-block;font:600 11px var(--mono);letter-spacing:.18em;border:1.5px solid currentColor;border-radius:3px;padding:2px 6px;margin-left:6px;vertical-align:3px}
 .facts p{font:500 11.5px/1.5 var(--mono);letter-spacing:.07em;margin:6px 0;text-transform:uppercase;word-break:break-word}
 .facts p span{opacity:.75}
 .facts .notes{text-transform:none;letter-spacing:.02em;font-size:12.5px}

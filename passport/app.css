@@ -77,7 +77,9 @@ button{cursor:pointer}
 .pf-low{margin-top:18px}
 .pf-stamps{display:flex;gap:6px;margin-top:8px;min-height:120px}
 .pf-stamps img{width:33%;mix-blend-mode:multiply}
-.mrz{position:absolute;left:20px;right:20px;bottom:96px;font:500 12px/1.5 var(--mono);letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.page .inner.pf{display:flex;flex-direction:column}
+.mrz{margin-top:auto;padding-top:22px;font:500 12px/1.5 var(--mono);letter-spacing:.02em;white-space:nowrap;overflow:hidden;flex:none}
+.socials a{color:inherit;text-decoration:underline;text-underline-offset:3px;font-size:12px}
 
 /* bottom bar */
 .bar{position:absolute;left:0;right:0;bottom:0;z-index:10;display:flex;gap:8px;justify-content:center;align-items:center;padding:12px 14px max(14px,env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(243,237,220,.96) 35%)}

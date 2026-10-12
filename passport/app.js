@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791785651';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791785651';
+import * as db from './store.js?v=1791785939';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791785939';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -22,12 +22,18 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { 
 /* ---------- shared data ---------- */
 let LOGOS = null, EVENTS = null, DEMO = false, state = { profile: null, entries: [] };
 const CAT = { dj: 'DJs', festival: 'Festivals', club: 'Clubs', venue: 'Venues' };
+const SOCIALS = [['instagram', 'INSTAGRAM', 'https://instagram.com/'], ['tiktok', 'TIKTOK', 'https://www.tiktok.com/@'], ['soundcloud', 'SOUNDCLOUD', 'https://soundcloud.com/'], ['spotify', 'SPOTIFY', ''], ['x', 'X', 'https://x.com/'], ['website', 'WEBSITE', '']];
+const socialURL = (k, v) => { v = String(v || '').trim(); if (/^https?:\/\//i.test(v)) return v; const base = (SOCIALS.find(s => s[0] === k) || [])[2]; return base ? base + v.replace(/^@/, '') : /\./.test(v) ? 'https://' + v : ''; };
+const socialsHTML = p => { const so = p.theme?.socials || {}, list = SOCIALS.filter(([k]) => so[k] && socialURL(k, so[k]));
+  return list.length ? `<div class="kv"><b>SOCIALS</b><i class="socials">${list.map(([k, label]) => `<a href="${esc(socialURL(k, so[k]))}" target="_blank" rel="noopener me">${label}</a>`).join(' · ')}</i></div>` : ''; };
 const logos = async (fresh) => { if (LOGOS && !fresh) return LOGOS;
   const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
   const shared = await db.listLogos().catch(() => []);
   return LOGOS = [...shared.map(l => ({ cat: CAT[l.kind], name: l.name, key: l.key, src: l.url })), ...base.map(l => ({ ...l, src: 'data/' + l.file }))]; };
 const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
-const logoFor = (name, cats) => (LOGOS || []).find(l => (!cats || cats.includes(l.cat)) && (l.key === keyOf(name) || keyOf(name).startsWith(l.key) && l.key.length > 4));
+const coreKey = s => keyOf(String(s || '').replace(/\b(19|20)\d\d\b/g, '').replace(/\b(music|arts?|and|festival|fest|weekend ?\d?|presents|the|las vegas|ibiza|official)\b/gi, ' '));
+const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (!k) return null; const L = (LOGOS || []).filter(l => !cats || cats.includes(l.cat));
+  return L.find(l => l.key === k) || L.find(l => c.length > 3 && coreKey(l.name) === c) || L.find(l => l.key.length > 4 && (k.startsWith(l.key) || (k.length > 6 && l.key.startsWith(k)))) || null; };
 
 /* ---------- router ---------- */
 const routes = { gate, cover, apply, signin, setup, book, editor };
@@ -164,6 +170,8 @@ async function setup() {
     <label class="field"><span>FAVORITE DJS</span><input id="djs" value="${esc(p.favorite_djs)}" maxlength="80"></label>
     <label class="field"><span>FAVORITE FESTIVAL</span><input id="fest" value="${esc(p.favorite_festival)}" maxlength="60"></label>
     <label class="field"><span>FAVORITE GENRE</span><input id="genre" value="${esc(p.favorite_genre)}" maxlength="60"></label>
+    <p class="field" style="margin-top:22px"><span>SOCIALS (HANDLE OR LINK, ALL OPTIONAL)</span></p>
+    <div class="row2">${SOCIALS.map(([k, label]) => `<label class="field"><span>${label}</span><input id="so-${k}" value="${esc(p.theme?.socials?.[k] || '')}" maxlength="80" autocapitalize="none" autocorrect="off" placeholder="@handle"></label>`).join('')}</div>
     <div class="err" id="e"></div>
     <button class="btn" id="save">${state.profile && state.profile.name ? 'SAVE' : 'ISSUE MY PASSPORT'}</button>
     ${state.profile && state.profile.name ? '<button class="link" id="out" style="margin-top:14px">Sign out</button>' : ''}
@@ -181,7 +189,8 @@ async function setup() {
     b.disabled = true;
     try {
       const row = { username: p.username, name, home: $('#home').value.trim(), favorite_djs: $('#djs').value.trim(), favorite_festival: $('#fest').value.trim(), favorite_genre: $('#genre').value.trim(),
-        theme: { ...(p.theme || {}), raves_before: +$('#rb').value || 0, fests_before: +$('#fb').value || 0 } };
+        theme: { ...(p.theme || {}), raves_before: +$('#rb').value || 0, fests_before: +$('#fb').value || 0,
+          socials: Object.fromEntries(SOCIALS.map(([k]) => [k, $('#so-' + k).value.trim()]).filter(([, v]) => v)) } };
       if (photoBlob) row.photo_url = await db.uploadImage(photoBlob, 'photo');
       state.profile = await db.saveProfile(row); go('book');
     } catch (err) { $('#e').textContent = err.message; b.disabled = false; }
@@ -209,7 +218,7 @@ async function book(openIndex) {
   const [m1, m2] = mrz(p);
   app.innerHTML = `<div class="book" id="bk">
     <article class="page" data-i="0">
-      <div class="inner">
+      <div class="inner pf">
         <p class="pf-handle">@${esc(p.username || '')}</p>
         <div class="head" style="margin-top:4px"><span>TRAVELER INFORMATION</span></div>
         <div class="pf-grid">
@@ -221,10 +230,11 @@ async function book(openIndex) {
           ${p.favorite_djs ? `<div class="kv"><b>FAVORITE DJS</b><i>${esc(p.favorite_djs)}</i></div>` : ''}
           ${p.favorite_festival ? `<div class="kv"><b>FAVORITE FESTIVAL</b><i>${esc(p.favorite_festival)}</i></div>` : ''}
           ${p.favorite_genre ? `<div class="kv"><b>FAVORITE GENRE</b><i>${esc(p.favorite_genre)}</i></div>` : ''}
+          ${socialsHTML(p)}
           <div class="kv"><b>HIGHLIGHTED STAMPS</b></div><div class="pf-stamps" id="hl"></div>
         </div>
+        <div class="mrz" aria-hidden="true">${esc(m1)}<br>${esc(m2)}</div>
       </div>
-      <div class="mrz" aria-hidden="true">${esc(m1)}<br>${esc(m2)}</div>
     </article>
     ${E.map((e, i) => `<article class="page tint-${esc(e.bg?.tint || 'cream')}" data-i="${i + 1}" data-id="${esc(e.id)}">
       <span class="num">#${e.num || (tb.raves_before || 0) + i + 1}</span>

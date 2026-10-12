@@ -65,7 +65,7 @@ async function seeklogoLogo(name: string): Promise<string | null> {
 
 // Find logo candidates on an official website: header <img>/<svg> marked "logo", touch icons, then og:image.
 async function scanSite(site: string): Promise<string[]> {
-  const r = await fetch(site, { headers: { ...UA, Accept: 'text/html' }, redirect: 'follow' });
+  const r = await fetch(site, { headers: { ...UA, Accept: 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
   if (!r.ok) return [];
   const base = r.url, html = (await r.text()).slice(0, 600_000), out: string[] = [];
   const abs = (u: string) => { try { return new URL(u.replace(/&amp;/g, '&'), base).href; } catch { return ''; } };
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     if (body.auto) { url = (await wikidataLogo(name, kind)) || ''; source = 'wikidata'; if (!url) { url = (await wikipediaLogo(name, kind)) || ''; source = 'wikipedia'; } if (!url) { url = (await seeklogoLogo(name)) || ''; source = 'seeklogo'; } }
     if (!url) return json({ error: 'Could not find a logo for ' + name + '. Paste a link or upload one.' }, 404);
     if (!/^https:\/\//i.test(url)) return json({ error: 'Use an https link to the image.' }, 400);
-    const r = await fetch(url, { headers: UA, redirect: 'follow' });
+    const r = await fetch(url, { headers: UA, redirect: 'follow', signal: AbortSignal.timeout(15000) });
     const type = (r.headers.get('content-type') || '').split(';')[0].trim();
     if (!r.ok || !OK_TYPES[type]) return json({ error: 'That link is not an image (PNG, JPG, WEBP or SVG). Right-click the logo and copy the image address.' }, 400);
     const bytes = new Uint8Array(await r.arrayBuffer());

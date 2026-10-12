@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791825171';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791825515';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -40,7 +40,7 @@ export async function deleteLogo(id) { if (!LIVE) return; const { error } = awai
 export async function scanSite(site) {
   if (!LIVE) return [];
   const { data } = await sb.auth.getSession(); if (!data.session) throw new Error('Sign in first.');
-  const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ scan: site }) });
+  const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ scan: site }), signal: AbortSignal.timeout(20000) });
   const j = await r.json().catch(() => ({})); return j.candidates || [];
 }
 export async function myId() { const u = await currentUser(); return u ? u.id : null; }

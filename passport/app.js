@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791829643';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791829643';
+import * as db from './store.js?v=1791829841';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791829841';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -26,9 +26,12 @@ const SOCIALS = [['instagram', 'INSTAGRAM', 'https://instagram.com/'], ['tiktok'
 const socialURL = (k, v) => { v = String(v || '').trim(); if (/^https?:\/\//i.test(v)) return v; const base = (SOCIALS.find(s => s[0] === k) || [])[2]; return base ? base + v.replace(/^@/, '') : /\./.test(v) ? 'https://' + v : ''; };
 const socialsHTML = p => { const so = p.theme?.socials || {}, list = SOCIALS.filter(([k]) => so[k] && socialURL(k, so[k]));
   return list.length ? `<div class="kv"><b>SOCIALS</b><i class="socials">${list.map(([k, label]) => `<a href="${esc(socialURL(k, so[k]))}" target="_blank" rel="noopener me">${label}</a>`).join(' · ')}</i></div>` : ''; };
+// Logos people added by hand (link or upload) always beat ones the app found on its own; within each group, newest first.
+const AUTO_SOURCES = ['official site', 'wikidata', 'wikipedia', 'seeklogo'];
+const rankLogos = list => [...list].sort((a, b) => (AUTO_SOURCES.includes(a.source) - AUTO_SOURCES.includes(b.source)) || String(b.created_at).localeCompare(String(a.created_at)));
 const logos = async (fresh) => { if (LOGOS && !fresh) return LOGOS;
   const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
-  const shared = await db.listLogos().catch(() => []);
+  const shared = rankLogos(await db.listLogos().catch(() => []));
   return LOGOS = [...shared.map(l => ({ cat: CAT[l.kind], name: l.name, key: l.key, src: l.url })), ...base.map(l => ({ ...l, src: 'data/' + l.file }))]; };
 const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
 const coreKey = s => keyOf(String(s || '').replace(/\b(19|20)\d\d\b/g, '').replace(/\b(music|arts?|and|festival|fest|weekend ?\d?|presents|the|las vegas|ibiza|official)\b/gi, ' '));
@@ -295,7 +298,7 @@ async function drawStamps(host, list, editing) {
 
 /* ---------- 5. add / edit a page ---------- */
 async function editor(existing) {
-  await logos();
+  await logos(true);
   const isNew = !existing;
   const e = existing ? JSON.parse(JSON.stringify(existing)) : { kind: 'show', title: '', venue: '', city: '', date: new Date().toISOString().slice(0, 10), artists: [], lineup: [], notes: '', bg: { tint: 'cream' }, stamps: [], shot_it: false };
   let bgBlob = null;
@@ -367,6 +370,7 @@ async function editor(existing) {
   const autoFestivalArt = async () => {
     if (e.kind !== 'festival' || !e.title || (artChoice && artChoice.kind !== 'logo')) return;
     let fl = logoFor(e.title, ['Festivals']);
+    if (!fl) { await logos(true); fl = logoFor(e.title, ['Festivals']); }
     if (!fl) { toast('Finding the ' + e.title + ' logo…', 4000); try { await db.addLogo({ name: e.title, kind: 'festival', auto: true }); await logos(true); fl = logoFor(e.title, ['Festivals']); } catch (err) {} }
     if (fl) { artChoice = { kind: 'logo', src: fl.src }; toast(e.title + ' logo added as the page art.'); drawArts(); drawMissing(); return; }
     // not found anywhere: say so and open the add-a-logo form right there
@@ -494,7 +498,7 @@ async function logodir() {
   const KINDOF = { DJs: 'dj', Clubs: 'club', Venues: 'venue', Festivals: 'festival', Promoters: 'promoter' };
   // one logo per name and type: the newest shared one wins, then the built-in one (same order the passport uses)
   const all = () => { const seen = new Set(), out = [];
-    for (const l of [...shared.map(l => ({ ...l, mine: l.added_by === me })), ...base.map(l => ({ name: l.name, kind: KINDOF[l.cat] || 'dj', key: keyOf(l.name), url: 'data/' + l.file, builtin: true }))]) {
+    for (const l of [...rankLogos(shared).map(l => ({ ...l, mine: l.added_by === me })), ...base.map(l => ({ name: l.name, kind: KINDOF[l.cat] || 'dj', key: keyOf(l.name), url: 'data/' + l.file, builtin: true }))]) {
       const id = l.kind + ':' + l.key; if (seen.has(id)) continue; seen.add(id); out.push({ ...l, editable: admin || l.mine }); }
     return out; };
   app.innerHTML = `<section class="screen sheet paper logodir">

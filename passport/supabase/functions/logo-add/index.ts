@@ -109,7 +109,10 @@ Deno.serve(async (req) => {
 
   let url = String(body.url || '').trim(), source = 'link';
   try {
-    if (body.auto) { url = (await officialSiteLogo(name, kind)) || ''; source = 'official site'; if (!url) { url = (await wikidataLogo(name, kind)) || ''; source = 'wikidata'; } if (!url) { url = (await wikipediaLogo(name, kind)) || ''; source = 'wikipedia'; } if (!url) { url = (await seeklogoLogo(name)) || ''; source = 'seeklogo'; } }
+    if (body.auto) {
+      const { data: have } = await admin.from('logos').select('*').eq('key', keyOf(name)).eq('kind', kind).limit(1);
+      if (have && have.length) return json({ logo: have[0] });
+ url = (await officialSiteLogo(name, kind)) || ''; source = 'official site'; if (!url) { url = (await wikidataLogo(name, kind)) || ''; source = 'wikidata'; } if (!url) { url = (await wikipediaLogo(name, kind)) || ''; source = 'wikipedia'; } if (!url) { url = (await seeklogoLogo(name)) || ''; source = 'seeklogo'; } }
     if (!url) return json({ error: 'Could not find a logo for ' + name + '. Paste a link or upload one.' }, 404);
     if (!/^https:\/\//i.test(url)) return json({ error: 'Use an https link to the image.' }, 400);
     const r = await fetch(url, { headers: UA, redirect: 'follow', signal: AbortSignal.timeout(15000) });

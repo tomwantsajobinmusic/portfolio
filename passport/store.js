@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791829643';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791829841';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -112,7 +112,7 @@ export async function getPublicBook(username) {
 /* ---------- shared logo directory ---------- */
 export async function listLogos() {
   if (!LIVE) return [];
-  const { data, error } = await sb.from('logos').select('id,kind,name,key,url,added_by,created_at').order('created_at', { ascending: false }).limit(2000); if (error) throw error; return data;
+  const { data, error } = await sb.from('logos').select('id,kind,name,key,url,source,added_by,created_at').order('created_at', { ascending: false }).limit(2000); if (error) throw error; return data;
 }
 export async function addLogo({ name, kind, url, auto }) {
   if (!LIVE) throw new Error('Connect the backend to add logos.');

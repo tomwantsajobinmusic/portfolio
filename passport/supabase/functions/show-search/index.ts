@@ -3,10 +3,12 @@
 //   GET ?q=mau p pacha          -> shows matching an artist + venue/city words
 //   GET ?venueId=..&date=yyyy-mm-dd -> everyone setlist.fm has playing that venue that day (the lineup)
 //   GET ?venue=Pier 80&city=San Francisco&year=2026[&from=mm-dd&to=mm-dd] -> every day with sets at that venue that year, lineups grouped by day (festivals)
-// Secret needed: SETLISTFM_API_KEY (Supabase → Edge Functions → Secrets).
+// Secrets: SETLISTFM_API_KEY, and optionally BANDSINTOWN_APP_ID (adds artist-reported past and upcoming dates,
+// with festival lineups attached). Without the Bandsintown key the search works on setlist.fm alone.
 
 const API = 'https://api.setlist.fm/rest/1.0';
 const KEY = Deno.env.get('SETLISTFM_API_KEY') ?? '';
+const BIT = Deno.env.get('BANDSINTOWN_APP_ID') ?? '';
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -47,7 +49,7 @@ function rows(setlists: any[]): Row[] {
   return [...byShow.values()].map((r) => ({ ...r, f: r.a.length > 4 || /festival|fest\b/i.test(r.n + ' ' + r.v) ? 1 : 0 }));
 }
 
-async function search(q: string): Promise<Row[]> {
+async function setlistSearch(q: string): Promise<Row[]> {
   const words = norm(q).split(' ').filter(Boolean);
   if (!words.length) return [];
   const match = (r: Row, rest: string[]) => rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d).includes(w));
@@ -95,6 +97,44 @@ async function festivalDays(venue: string, city: string, year: string, from = ''
     r.a.forEach((x) => !d.a.includes(x) && d.a.push(x));
   }
   return [...byDay.values()].sort((a, b) => a.d.localeCompare(b.d));
+}
+
+// Bandsintown: look the artist up (longest leading run of words), keep shows matching the rest of the words.
+async function bitSearch(q: string): Promise<Row[]> {
+  if (!BIT) return [];
+  const words = norm(q).split(' ').filter(Boolean);
+  for (let k = Math.min(words.length, 4); k >= 1; k--) {
+    const artist = words.slice(0, k).join(' '), rest = words.slice(k);
+    let list: any;
+    try {
+      const r = await fetch('https://rest.bandsintown.com/artists/' + encodeURIComponent(artist) + '/events?date=all&app_id=' + encodeURIComponent(BIT), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue; list = await r.json();
+    } catch { continue; }
+    if (!Array.isArray(list) || !list.length) continue;
+    const out: Row[] = list.map((e: any) => {
+      const v = e.venue || {}, d = String(e.datetime || e.starts_at || '').slice(0, 10);
+      const loc = [v.city, v.country === 'United States' ? v.region : v.country].filter(Boolean).join(', ');
+      const lineup: string[] = (e.lineup || []).filter(Boolean);
+      const fest = lineup.length > 4 || !!e.festival_start_date || /festival|fest\b/i.test(e.title || '');
+      return { id: 'bit:' + e.id, d, n: fest ? (e.title || v.name || '') : '', v: v.name || '', venueId: '', l: loc, a: lineup, f: fest ? 1 : 0, src: 'bandsintown' };
+    }).filter((r: Row) => r.d && rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d).includes(w)));
+    if (out.length) return out;
+  }
+  return [];
+}
+
+// Both sources at once; the same show from both (same day, same venue) is merged, keeping the fuller lineup.
+async function search(q: string): Promise<Row[]> {
+  const [a, b] = await Promise.all([setlistSearch(q).catch(() => [] as Row[]), bitSearch(q).catch(() => [] as Row[])]);
+  const key = (r: Row) => r.d + '|' + norm(r.v).replace(/^the /, '').slice(0, 12);
+  const merged = new Map<string, Row>();
+  for (const r of [...a, ...b]) {
+    const k = key(r), m = merged.get(k);
+    if (!m) { merged.set(k, { ...r }); continue; }
+    r.a.forEach((x) => !m.a.includes(x) && m.a.push(x));
+    if (!m.n && r.n) m.n = r.n; if (!m.venueId && r.venueId) m.venueId = r.venueId; m.f = m.f || r.f;
+  }
+  return [...merged.values()].sort((x, y) => y.d.localeCompare(x.d));
 }
 
 async function lineup(venueId: string, date: string): Promise<string[]> {

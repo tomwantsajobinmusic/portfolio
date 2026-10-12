@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791830415';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791830415';
+import * as db from './store.js?v=1791832162';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791832162';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -311,7 +311,7 @@ async function editor(existing) {
     <div class="section"><h3>1. FIND THE SHOW</h3>
       <label class="field"><span>SEARCH FESTIVALS, ARTISTS, VENUES, CITIES</span><input id="q" placeholder="ACL, Fisher, Concourse, Austin…" autocomplete="off"></label>
       <div class="results" id="res" role="listbox" aria-label="Shows"></div>
-      <p class="hint" style="margin-top:8px">Past shows from <a href="https://www.setlist.fm" target="_blank" rel="noopener">setlist.fm</a>, upcoming from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a>. Search the artist and venue, like “mau p pacha”. Not there? Fill it in below.</p>
+      <p class="hint" style="margin-top:8px">Shows from <a href="https://www.setlist.fm" target="_blank" rel="noopener">setlist.fm</a> and <a href="https://www.bandsintown.com" target="_blank" rel="noopener">Bandsintown</a>, upcoming from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a>. Search the artist and venue, like “mau p pacha”. Not there? Fill it in below.</p>
     </div>
 
     <div class="section"><h3>2. THE DETAILS</h3>
@@ -413,7 +413,7 @@ async function editor(existing) {
     res.style.display = '';
     const fitem = (x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n)}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)} · ${x.a.length ? x.a.length + ' artists' : 'lineup not logged yet, add the sets you saw'}</small></button>`;
     res.innerHTML = (fr.length ? head('FESTIVALS') + fr.map((x, i) => fitem(x, i)).join('') : festBusy ? head('LOOKING UP FESTIVAL DAYS…') : '') +
-      (old.length ? head('PAST SHOWS · SETLIST.FM') + old.map((x, i) => item(x, fr.length + i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
+      (old.length ? head('SHOWS · SETLIST.FM + BANDSINTOWN') + old.map((x, i) => item(x, fr.length + i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
       (up.length ? head('TODAY AND UPCOMING · EDMTRAIN') + up.map((x, i) => item(x, fr.length + old.length + i)).join('') : '') +
       (!fr.length && !festBusy && !old.length && !up.length && !pastBusy ? '<p class="hint" style="padding:10px">No matches. Try the artist and the venue, like “mau p pacha”, or fill it in below.</p>' : '');
     $$('#res button').forEach(b => b.onclick = () => pick(rows[+b.dataset.i]));

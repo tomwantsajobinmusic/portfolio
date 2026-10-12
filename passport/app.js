@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791825515';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791825515';
+import * as db from './store.js?v=1791825610';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791825610';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -344,7 +344,7 @@ async function editor(existing) {
     ${isNew ? '' : '<button class="btn ghost" id="del" style="margin-top:10px">DELETE PAGE</button>'}
   </section>`;
   $('#k').value = e.kind;
-  const syncDay = () => { const f = $('#k').value === 'festival'; $('#dayRow').classList.toggle('hidden', !f); $('#day').disabled = !$('#dayOn').checked; };
+  const syncDay = () => { const f = $('#k').value === 'festival'; $('#dayRow').classList.toggle('hidden', !f); $('#day').disabled = !$('#dayOn').checked; $('#day').classList.toggle('hidden', !$('#dayOn').checked); };
   $('#k').onchange = () => { e.kind = $('#k').value; syncDay(); drawStampChoices(); };
   $('#dayOn').onchange = () => { syncDay(); e.day = $('#dayOn').checked ? +$('#day').value : null; drawStampChoices(); };
   $('#day').onchange = () => { e.day = +$('#day').value; drawStampChoices(); };

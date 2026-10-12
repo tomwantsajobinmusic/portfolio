@@ -1,7 +1,7 @@
 // Supabase Edge Function: logo-add
 // Signed-in travelers add a logo to the shared directory.
 //   POST { name, kind: 'dj'|'festival'|'club'|'venue', url }      -> fetch that image, store a copy, add it
-//   POST { name, kind, auto: true }                                -> look it up on Wikidata, then seeklogo
+//   POST { name, kind, auto: true }                                -> look it up on Wikidata, Wikipedia, then seeklogo
 // The copy lives in the public "passport" bucket so the app can engrave it and make stamps from it.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -33,12 +33,32 @@ async function wikidataLogo(name: string, kind: string): Promise<string | null> 
   }
   return null;
 }
+async function wikipediaLogo(name: string, kind: string): Promise<string | null> {
+  const W = 'https://en.wikipedia.org/w/api.php?format=json&';
+  const q = kind === 'festival' && !/festival|fest\b/i.test(name) ? name + ' festival' : kind === 'dj' ? name + ' DJ' : name;
+  const s = await fetch(W + 'action=query&list=search&srlimit=5&srsearch=' + encodeURIComponent(q), { headers: UA }).then((r) => r.json());
+  const k = keyOf(name).slice(0, 8);
+  for (const hit of s.query?.search || []) {
+    if (!keyOf(hit.title).startsWith(k)) continue;
+    const im = await fetch(W + 'action=query&prop=images&imlimit=60&redirects=1&titles=' + encodeURIComponent(hit.title), { headers: UA }).then((r) => r.json());
+    const files = ((Object.values(im.query?.pages || {})[0] as any)?.images || []).map((x: any) => x.title as string)
+      .filter((t: string) => /logo|wordmark/i.test(t) && !/commons|wiki|edit|question|ambox|portal|flag|symbol|icon/i.test(t));
+    const pick = files.find((t: string) => keyOf(t).includes(keyOf(name).slice(0, 6))) || files[0];
+    if (!pick) continue;
+    const ii = await fetch(W + 'action=query&prop=imageinfo&iiprop=url&iiurlwidth=900&titles=' + encodeURIComponent(pick), { headers: UA }).then((r) => r.json());
+    const info = (Object.values(ii.query?.pages || {})[0] as any)?.imageinfo?.[0];
+    if (info) return info.thumburl || info.url;
+  }
+  return null;
+}
 async function seeklogoLogo(name: string): Promise<string | null> {
   const h = await fetch('https://seeklogo.com/search?q=' + encodeURIComponent(name), { headers: UA }).then((r) => r.ok ? r.text() : '');
   const k = keyOf(name);
-  for (const m of h.matchAll(/<img[^>]+alt="([^"]+)"[^>]+(?:src|data-src)="(https:\/\/images\.seeklogo\.com\/logo-png\/[^"]+)"/g)) {
-    const alt = keyOf(m[1].replace(/logo png vector/i, ''));
-    if (alt === k || (alt.startsWith(k) && /^(new|dj|logo|festival|fest|music|official)*$/.test(alt.slice(k.length)))) return m[2].replace(/\/logo-png\/(\d+)\/2\//, '/logo-png/$1/1/');
+  for (const tag of h.match(/<img\b[^>]*>/g) || []) {
+    const altM = tag.match(/\balt="([^"]*)"/), srcM = tag.match(/(?:data-src|src)="(https:\/\/images\.seeklogo\.com\/logo-png\/[^"]+)"/);
+    if (!altM || !srcM) continue;
+    const alt = keyOf(altM[1].replace(/logo png vector/i, ''));
+    if (alt === k || (alt.startsWith(k) && /^(new|dj|logo|festival|fest|music|official|\d+)*$/.test(alt.slice(k.length)))) return srcM[1].replace(/\/logo-png\/(\d+)\/2\//, '/logo-png/$1/1/');
   }
   return null;
 }
@@ -56,7 +76,7 @@ Deno.serve(async (req) => {
 
   let url = String(body.url || '').trim(), source = 'link';
   try {
-    if (body.auto) { url = (await wikidataLogo(name, kind)) || ''; source = 'wikidata'; if (!url) { url = (await seeklogoLogo(name)) || ''; source = 'seeklogo'; } }
+    if (body.auto) { url = (await wikidataLogo(name, kind)) || ''; source = 'wikidata'; if (!url) { url = (await wikipediaLogo(name, kind)) || ''; source = 'wikipedia'; } if (!url) { url = (await seeklogoLogo(name)) || ''; source = 'seeklogo'; } }
     if (!url) return json({ error: 'Could not find a logo for ' + name + '. Paste a link or upload one.' }, 404);
     if (!/^https:\/\//i.test(url)) return json({ error: 'Use an https link to the image.' }, 400);
     const r = await fetch(url, { headers: UA, redirect: 'follow' });

@@ -42,8 +42,8 @@ async function wikipediaLogo(name: string, kind: string): Promise<string | null>
     if (!keyOf(hit.title).startsWith(k)) continue;
     const im = await fetch(W + 'action=query&prop=images&imlimit=60&redirects=1&titles=' + encodeURIComponent(hit.title), { headers: UA }).then((r) => r.json());
     const files = ((Object.values(im.query?.pages || {})[0] as any)?.images || []).map((x: any) => x.title as string)
-      .filter((t: string) => /logo|wordmark/i.test(t) && !/commons|wiki|edit|question|ambox|portal|flag|symbol|icon/i.test(t));
-    const pick = files.find((t: string) => keyOf(t).includes(keyOf(name).slice(0, 6))) || files[0];
+      .filter((t: string) => /logo|wordmark/i.test(t) && !/commons|wiki|wikt|edit|question|ambox|portal|flag|symbol|icon|disambig/i.test(t));
+    const pick = files.find((t: string) => keyOf(t).includes(keyOf(name).slice(0, 5)));
     if (!pick) continue;
     const ii = await fetch(W + 'action=query&prop=imageinfo&iiprop=url&iiurlwidth=900&titles=' + encodeURIComponent(pick), { headers: UA }).then((r) => r.json());
     const info = (Object.values(ii.query?.pages || {})[0] as any)?.imageinfo?.[0];
@@ -55,7 +55,7 @@ async function seeklogoLogo(name: string): Promise<string | null> {
   const h = await fetch('https://seeklogo.com/search?q=' + encodeURIComponent(name), { headers: UA }).then((r) => r.ok ? r.text() : '');
   const k = keyOf(name);
   for (const tag of h.match(/<img\b[^>]*>/g) || []) {
-    const altM = tag.match(/\balt="([^"]*)"/), srcM = tag.match(/(?:data-src|src)="(https:\/\/images\.seeklogo\.com\/logo-png\/[^"]+)"/);
+    const altM = tag.match(/\balt="([^"]*)"/), srcM = tag.match(/data-src="(https:\/\/images\.seeklogo\.com\/logo-png\/[^"]+)"/) || tag.match(/\bsrc="(https:\/\/images\.seeklogo\.com\/logo-png\/[^"]+)"/);
     if (!altM || !srcM) continue;
     const alt = keyOf(altM[1].replace(/logo png vector/i, ''));
     if (alt === k || (alt.startsWith(k) && /^(new|dj|logo|festival|fest|music|official|\d+)*$/.test(alt.slice(k.length)))) return srcM[1].replace(/\/logo-png\/(\d+)\/2\//, '/logo-png/$1/1/');

@@ -49,22 +49,28 @@ function rows(setlists: any[]): Row[] {
 async function search(q: string): Promise<Row[]> {
   const words = norm(q).split(' ').filter(Boolean);
   if (!words.length) return [];
-  // Try the longest leading run of words as the artist, use the rest to filter by venue/city/date text.
+  const match = (r: Row, rest: string[]) => rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d).includes(w));
+  // Longest leading run of words = artist; the rest = venue or city, asked of setlist.fm directly.
   for (let k = words.length; k >= 1; k--) {
-    const artist = words.slice(0, k).join(' '), rest = words.slice(k);
-    const data = await sf('/search/setlists', { artistName: artist, p: '1' });
-    const list = data?.setlist || [];
-    if (!list.length) continue;
-    let out = rows(list);
-    if (rest.length) out = out.filter((r) => rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d).includes(w)));
-    if (out.length || !rest.length) {
-      if (rest.length && out.length < 3) { // fetch a second page when filtering left little
-        await sleep(550); const more = await sf('/search/setlists', { artistName: artist, p: '2' });
-        const extra = rows(more?.setlist || []).filter((r) => rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d).includes(w)));
-        out = [...out, ...extra.filter((x) => !out.some((o) => o.id === x.id))];
-      }
-      return out;
+    const artist = words.slice(0, k).join(' '), rest = words.slice(k), place = rest.join(' ');
+    if (!rest.length) {
+      const data = await sf('/search/setlists', { artistName: artist, p: '1' });
+      if (data?.setlist?.length) return rows(data.setlist);
+      await sleep(550); continue;
     }
+    let out: Row[] = [];
+    for (const field of ['venueName', 'cityName']) {
+      const data = await sf('/search/setlists', { artistName: artist, [field]: place, p: '1' });
+      out = [...out, ...rows(data?.setlist || []).filter((x) => !out.some((o) => o.id === x.id))];
+      await sleep(550);
+      if (out.length >= 5) break;
+    }
+    if (!out.length) { // venue/city spelled differently: fall back to the artist's recent shows, filtered
+      const data = await sf('/search/setlists', { artistName: artist, p: '1' });
+      if (data?.setlist?.length) out = rows(data.setlist).filter((r) => match(r, rest));
+      else { await sleep(550); continue; }
+    }
+    if (out.length) return out;
     await sleep(550);
   }
   // No artist matched: treat the whole query as a venue or festival name.

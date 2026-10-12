@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791787686';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791787686';
+import * as db from './store.js?v=1791788398';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791788398';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -342,7 +342,7 @@ async function editor(existing) {
     timer = setTimeout(async () => { ctrl = new AbortController(); pastBusy = true; showResults();
       try { past = await db.searchPast(q, ctrl.signal); pastQ = q; } catch (x) { if (x.name !== 'AbortError') { past = []; pastQ = q; } } pastBusy = false; showResults(); }, 450); };
   const pick = async x => { picked = x;
-    e.event_id = x.src ? null : x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? x.a.slice() : [];
+    e.event_id = x.src ? null : x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : isNew ? [] : e.artists;
     $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
     if (e.kind === 'festival') chosen.delete('venue'); // festival stamp starts off; the logo is the page art instead
     await autoFestivalArt();
@@ -456,8 +456,10 @@ async function editor(existing) {
       // keep positions of stamps that stay, place new ones in an open spot
       const old = new Map((e.stamps || []).map(s => [s.k, s])), A = autoStamps(); if (e.shot_it) A.push({ id: 'shot', label: 'I shot it', p: { kind: 'shot' } });
       const spots = [[27, 18], [73, 24], [30, 42], [72, 47], [50, 31], [24, 58], [76, 60]]; let si = 0;
-      e.stamps = A.filter(s => chosen.has(s.id) || s.id === 'shot').map(s => { const o = old.get(s.id); if (o) return { ...o, p: s.p };
-        const [x, y] = spots[si++ % spots.length]; return { k: s.id, p: s.p, x, y, r: Math.round(Math.random() * 24 - 12), s: s.p.shape === 'logo' ? .62 : s.p.kind === 'shot' ? .62 : .72 }; });
+      // stamps the editor didn't generate (imported art, custom uploads) are kept exactly as they are
+      const autoIds = new Set([...A.map(s => s.id), 'shot']), custom = (e.stamps || []).filter(s => !autoIds.has(s.k));
+      e.stamps = [...custom, ...A.filter(s => chosen.has(s.id) || s.id === 'shot').map(s => { const o = old.get(s.id); if (o) return o.p && o.p.img ? o : { ...o, p: s.p };
+        const [x, y] = spots[si++ % spots.length]; return { k: s.id, p: s.p, x, y, r: Math.round(Math.random() * 24 - 12), s: s.p.shape === 'logo' ? .62 : s.p.kind === 'shot' ? .62 : .72 }; })];
       delete e._s; const saved = await db.saveEntry(e); state.entries = await db.listEntries();
       go('customize', saved.id || e.id);
     } catch (x) { console.error(x); err.textContent = x.message || 'Could not save. Try again.'; b.disabled = false; b.textContent = isNew ? 'MAKE THE PAGE' : 'SAVE'; }

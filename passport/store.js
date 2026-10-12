@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791827082';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791829643';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -117,7 +117,7 @@ export async function listLogos() {
 export async function addLogo({ name, kind, url, auto }) {
   if (!LIVE) throw new Error('Connect the backend to add logos.');
   const { data } = await sb.auth.getSession(); if (!data.session) throw new Error('Sign in to add logos.');
-  const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ name, kind, url, auto: !!auto }) });
+  const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ name, kind, url, auto: !!auto }), signal: AbortSignal.timeout(45000) });
   const j = await r.json().catch(() => ({}));
   // AVIF and other formats the server can't read: convert to PNG in the browser and retry with our own copy.
   if (!r.ok && url && !auto && /not an image/i.test(j.error || '')) {

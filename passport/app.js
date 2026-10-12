@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791827082';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791827082';
+import * as db from './store.js?v=1791829643';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791829643';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -368,7 +368,10 @@ async function editor(existing) {
     if (e.kind !== 'festival' || !e.title || (artChoice && artChoice.kind !== 'logo')) return;
     let fl = logoFor(e.title, ['Festivals']);
     if (!fl) { toast('Finding the ' + e.title + ' logo…', 4000); try { await db.addLogo({ name: e.title, kind: 'festival', auto: true }); await logos(true); fl = logoFor(e.title, ['Festivals']); } catch (err) {} }
-    if (fl) { artChoice = { kind: 'logo', src: fl.src }; drawArts(); drawMissing(); }
+    if (fl) { artChoice = { kind: 'logo', src: fl.src }; toast(e.title + ' logo added as the page art.'); drawArts(); drawMissing(); return; }
+    // not found anywhere: say so and open the add-a-logo form right there
+    toast('Couldn’t find a ' + e.title + ' logo. Paste a link to it below.', 5000);
+    openFor = e.title; drawMissing(); $('#missing').scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
   const showResults = async () => {
     const q = $('#q').value.trim().toLowerCase(); if (!q) { res.innerHTML = ''; res.style.display = 'none'; return; }

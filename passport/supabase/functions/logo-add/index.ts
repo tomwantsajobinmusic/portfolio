@@ -63,6 +63,23 @@ async function seeklogoLogo(name: string): Promise<string | null> {
   return null;
 }
 
+// Find logo candidates on an official website: header <img>/<svg> marked "logo", touch icons, then og:image.
+async function scanSite(site: string): Promise<string[]> {
+  const r = await fetch(site, { headers: { ...UA, Accept: 'text/html' }, redirect: 'follow' });
+  if (!r.ok) return [];
+  const base = r.url, html = (await r.text()).slice(0, 600_000), out: string[] = [];
+  const abs = (u: string) => { try { return new URL(u.replace(/&amp;/g, '&'), base).href; } catch { return ''; } };
+  const add = (u: string) => { const a = abs(u); if (a && /^https:/.test(a) && !out.includes(a)) out.push(a); };
+  for (const tag of html.match(/<img\b[^>]*>/gi) || []) {
+    if (!/logo|brand|wordmark/i.test(tag)) continue;
+    const src = (tag.match(/\b(?:data-src|src)="([^"]+)"/i) || [])[1] || (tag.match(/\bsrcset="([^"\s,]+)/i) || [])[1];
+    if (src && !/^data:/.test(src)) add(src);
+  }
+  for (const m of html.matchAll(/<link\b[^>]*rel="[^"]*(?:apple-touch-icon|icon)[^"]*"[^>]*>/gi)) { const h = (m[0].match(/href="([^"]+)"/i) || [])[1]; if (h && /svg|png/i.test(h)) add(h); }
+  const og = (html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i) || html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/i) || [])[1]; if (og) add(og);
+  return out.slice(0, 6);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -71,6 +88,7 @@ Deno.serve(async (req) => {
   if (!u?.user) return json({ error: 'Sign in to add logos.' }, 401);
 
   let body: any; try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
+  if (body.scan) { try { return json({ candidates: await scanSite(String(body.scan)) }); } catch (e) { return json({ candidates: [], error: String(e) }); } }
   const name = String(body.name || '').trim().slice(0, 60), kind = String(body.kind || '');
   if (!name || !KINDS.includes(kind)) return json({ error: 'Need a name and a type.' }, 400);
 

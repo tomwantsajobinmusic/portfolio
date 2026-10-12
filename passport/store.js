@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791832162';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791836235';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;

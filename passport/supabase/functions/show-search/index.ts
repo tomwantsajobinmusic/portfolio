@@ -88,7 +88,13 @@ async function festivalDays(venue: string, city: string, year: string, from = ''
     await sleep(550);
   }
   const inWindow = (iso: string) => { const md = iso.slice(5); return (!from || md >= from) && (!to || md <= to); };
-  return rows(all).filter((r) => inWindow(r.d)).sort((a, b) => a.d.localeCompare(b.d));
+  // festivals are often filed stage by stage: merge everything on the same day into one row
+  const byDay = new Map<string, Row>();
+  for (const r of rows(all).filter((r) => inWindow(r.d))) {
+    const d = byDay.get(r.d); if (!d) { byDay.set(r.d, { ...r, id: 'fest:' + r.d, f: 1 }); continue; }
+    r.a.forEach((x) => !d.a.includes(x) && d.a.push(x));
+  }
+  return [...byDay.values()].sort((a, b) => a.d.localeCompare(b.d));
 }
 
 async function lineup(venueId: string, date: string): Promise<string[]> {

@@ -98,6 +98,7 @@ async function callSearch(params, signal) {
   if (!r.ok) throw new Error('search ' + r.status); return r.json();
 }
 export async function searchPast(q, signal) { const d = await callSearch({ q }, signal); return d ? d.events || [] : []; }
+export async function festivalDays({ venue, city, year, from, to }, signal) { const d = await callSearch({ venue, city: city || '', year: String(year), from: from || '', to: to || '' }, signal); return d ? d.events || [] : []; }
 export async function pastLineup(venueId, date) { const d = await callSearch({ venueId, date }); return d ? d.artists || [] : []; }
 
 /* ---------- public, view-only books ---------- */

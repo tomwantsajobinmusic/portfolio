@@ -1,0 +1,335 @@
+{
+ "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet.",
+ "festivals": [
+  {
+   "name": "Portola",
+   "aliases": [
+    "portola festival",
+    "portola music festival"
+   ],
+   "venue": "Pier 80",
+   "cityQ": "San Francisco",
+   "city": "San Francisco, CA",
+   "from": "09-15",
+   "to": "10-10",
+   "dates": {
+    "2026": [
+     "2026-09-26",
+     "2026-09-27"
+    ]
+   }
+  },
+  {
+   "name": "Austin City Limits",
+   "aliases": [
+    "acl",
+    "acl fest",
+    "austin city limits music festival"
+   ],
+   "venue": "Zilker Park",
+   "cityQ": "Austin",
+   "city": "Austin, TX",
+   "from": "09-28",
+   "to": "10-20",
+   "dates": {}
+  },
+  {
+   "name": "EDC Las Vegas",
+   "aliases": [
+    "edc",
+    "electric daisy carnival",
+    "edc vegas"
+   ],
+   "venue": "Las Vegas Motor Speedway",
+   "cityQ": "Las Vegas",
+   "city": "Las Vegas, NV",
+   "from": "05-10",
+   "to": "05-31",
+   "dates": {}
+  },
+  {
+   "name": "Ultra Music Festival",
+   "aliases": [
+    "ultra",
+    "ultra miami"
+   ],
+   "venue": "Bayfront Park",
+   "cityQ": "Miami",
+   "city": "Miami, FL",
+   "from": "03-20",
+   "to": "04-02",
+   "dates": {}
+  },
+  {
+   "name": "Coachella",
+   "aliases": [
+    "coachella valley music and arts festival"
+   ],
+   "venue": "Empire Polo Club",
+   "cityQ": "Indio",
+   "city": "Indio, CA",
+   "from": "04-08",
+   "to": "04-30",
+   "dates": {}
+  },
+  {
+   "name": "Lollapalooza",
+   "aliases": [
+    "lolla",
+    "lollapalooza chicago"
+   ],
+   "venue": "Grant Park",
+   "cityQ": "Chicago",
+   "city": "Chicago, IL",
+   "from": "07-28",
+   "to": "08-08",
+   "dates": {}
+  },
+  {
+   "name": "Movement",
+   "aliases": [
+    "movement detroit",
+    "movement festival"
+   ],
+   "venue": "Hart Plaza",
+   "cityQ": "Detroit",
+   "city": "Detroit, MI",
+   "from": "05-22",
+   "to": "06-02",
+   "dates": {}
+  },
+  {
+   "name": "Electric Forest",
+   "aliases": [
+    "forest"
+   ],
+   "venue": "Double JJ Resort",
+   "cityQ": "Rothbury",
+   "city": "Rothbury, MI",
+   "from": "06-15",
+   "to": "07-05",
+   "dates": {}
+  },
+  {
+   "name": "Lost Lands",
+   "aliases": [
+    "lost lands festival"
+   ],
+   "venue": "Legend Valley",
+   "cityQ": "Thornville",
+   "city": "Thornville, OH",
+   "from": "09-12",
+   "to": "09-28",
+   "dates": {}
+  },
+  {
+   "name": "Bass Canyon",
+   "aliases": [],
+   "venue": "Gorge Amphitheatre",
+   "cityQ": "George",
+   "city": "George, WA",
+   "from": "08-10",
+   "to": "08-22",
+   "dates": {}
+  },
+  {
+   "name": "CRSSD",
+   "aliases": [
+    "crssd fest",
+    "crssd festival"
+   ],
+   "venue": "Waterfront Park",
+   "cityQ": "San Diego",
+   "city": "San Diego, CA",
+   "from": "02-25",
+   "to": "03-12",
+   "dates": {}
+  },
+  {
+   "name": "CRSSD Fall",
+   "aliases": [
+    "crssd fall"
+   ],
+   "venue": "Waterfront Park",
+   "cityQ": "San Diego",
+   "city": "San Diego, CA",
+   "from": "09-20",
+   "to": "10-06",
+   "dates": {}
+  },
+  {
+   "name": "Hulaween",
+   "aliases": [
+    "suwannee hulaween"
+   ],
+   "venue": "Spirit of the Suwannee Music Park",
+   "cityQ": "Live Oak",
+   "city": "Live Oak, FL",
+   "from": "10-25",
+   "to": "11-05",
+   "dates": {}
+  },
+  {
+   "name": "Beyond Wonderland",
+   "aliases": [
+    "beyond"
+   ],
+   "venue": "NOS Events Center",
+   "cityQ": "San Bernardino",
+   "city": "San Bernardino, CA",
+   "from": "03-15",
+   "to": "04-10",
+   "dates": {}
+  },
+  {
+   "name": "HARD Summer",
+   "aliases": [
+    "hard",
+    "hard summer music festival"
+   ],
+   "venue": "Hollywood Park",
+   "cityQ": "Inglewood",
+   "city": "Inglewood, CA",
+   "from": "07-25",
+   "to": "08-10",
+   "dates": {}
+  },
+  {
+   "name": "North Coast",
+   "aliases": [
+    "north coast music festival",
+    "ncmf"
+   ],
+   "venue": "SeatGeek Stadium",
+   "cityQ": "Bridgeview",
+   "city": "Bridgeview, IL",
+   "from": "08-25",
+   "to": "09-10",
+   "dates": {}
+  },
+  {
+   "name": "Bonnaroo",
+   "aliases": [],
+   "venue": "Great Stage Park",
+   "cityQ": "Manchester",
+   "city": "Manchester, TN",
+   "from": "06-08",
+   "to": "06-20",
+   "dates": {}
+  },
+  {
+   "name": "Tomorrowland",
+   "aliases": [],
+   "venue": "De Schorre",
+   "cityQ": "Boom",
+   "city": "Boom, Belgium",
+   "from": "07-15",
+   "to": "08-05",
+   "dates": {}
+  },
+  {
+   "name": "EXIT",
+   "aliases": [
+    "exit festival"
+   ],
+   "venue": "Petrovaradin Fortress",
+   "cityQ": "Novi Sad",
+   "city": "Novi Sad, Serbia",
+   "from": "07-05",
+   "to": "07-20",
+   "dates": {}
+  },
+  {
+   "name": "Lowlands",
+   "aliases": [],
+   "venue": "Evenemententerrein Walibi Holland",
+   "cityQ": "Biddinghuizen",
+   "city": "Biddinghuizen, Netherlands",
+   "from": "08-10",
+   "to": "08-25",
+   "dates": {}
+  },
+  {
+   "name": "Mysteryland",
+   "aliases": [],
+   "venue": "Haarlemmermeerse Bos",
+   "cityQ": "Hoofddorp",
+   "city": "Hoofddorp, Netherlands",
+   "from": "08-20",
+   "to": "09-05",
+   "dates": {}
+  },
+  {
+   "name": "Sónar",
+   "aliases": [
+    "sonar",
+    "sonar barcelona"
+   ],
+   "venue": "Fira Gran Via",
+   "cityQ": "L'Hospitalet de Llobregat",
+   "city": "Barcelona, Spain",
+   "from": "06-10",
+   "to": "06-25",
+   "dates": {}
+  },
+  {
+   "name": "Glastonbury",
+   "aliases": [
+    "glasto"
+   ],
+   "venue": "Worthy Farm",
+   "cityQ": "Pilton",
+   "city": "Pilton, UK",
+   "from": "06-20",
+   "to": "07-05",
+   "dates": {}
+  },
+  {
+   "name": "Boomtown",
+   "aliases": [
+    "boomtown fair"
+   ],
+   "venue": "Matterley Estate",
+   "cityQ": "Winchester",
+   "city": "Winchester, UK",
+   "from": "08-01",
+   "to": "08-20",
+   "dates": {}
+  },
+  {
+   "name": "Kappa FuturFestival",
+   "aliases": [
+    "kappa futur",
+    "futur"
+   ],
+   "venue": "Parco Dora",
+   "cityQ": "Turin",
+   "city": "Turin, Italy",
+   "from": "07-01",
+   "to": "07-15",
+   "dates": {}
+  },
+  {
+   "name": "Parookaville",
+   "aliases": [],
+   "venue": "Airport Weeze",
+   "cityQ": "Weeze",
+   "city": "Weeze, Germany",
+   "from": "07-10",
+   "to": "07-25",
+   "dates": {}
+  },
+  {
+   "name": "Untold",
+   "aliases": [
+    "untold festival"
+   ],
+   "venue": "Cluj Arena",
+   "cityQ": "Cluj-Napoca",
+   "city": "Cluj-Napoca, Romania",
+   "from": "07-25",
+   "to": "08-15",
+   "dates": {}
+  }
+ ]
+}

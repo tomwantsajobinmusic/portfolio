@@ -33,6 +33,8 @@ const logos = async (fresh) => { if (LOGOS && !fresh) return LOGOS;
   const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
   const shared = rankLogos(await db.listLogos().catch(() => []));
   return LOGOS = [...shared.map(l => ({ cat: CAT[l.kind], name: l.name, key: l.key, src: l.url })), ...base.map(l => ({ ...l, src: 'data/' + l.file }))]; };
+let FESTS = null;
+const festivals = async () => FESTS || (FESTS = await fetch('data/festivals.json').then(r => r.json()).then(d => d.festivals).catch(() => []));
 const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
 const coreKey = s => keyOf(String(s || '').replace(/\b(19|20)\d\d\b/g, '').replace(/\b(music|arts?|and|festival|fest|weekend ?\d?|presents|the|las vegas|ibiza|official)\b/gi, ' '));
 const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (!k) return null; const L = (LOGOS || []).filter(l => !cats || cats.includes(l.cat));
@@ -355,13 +357,35 @@ async function editor(existing) {
   $('#bk').onclick = () => go('book', existing ? state.entries.indexOf(existing) + 1 : 0);
 
   // search
-  const res = $('#res'); let picked = null, past = [], pastQ = '', pastBusy = false, ctrl = null, timer = 0;
-  const fetchPast = q => { clearTimeout(timer); if (ctrl) ctrl.abort(); if (q.length < 3) { past = []; pastQ = ''; return; }
+  const res = $('#res'); let picked = null, past = [], pastQ = '', pastBusy = false, ctrl = null, timer = 0, fest = [], festQ = '', festBusy = false;
+  // Festivals: setlist.fm files them under their venue, so look the festival up by venue and year and offer each day.
+  const fetchFest = async q => {
+    const qk = coreKey(q); fest = []; festQ = q; if (qk.length < 3) return;
+    const hits = (await festivals()).filter(f => [f.name, ...(f.aliases || [])].some(n => { const k = coreKey(n); return k.startsWith(qk) || (qk.startsWith(k) && k.length >= 4); })).slice(0, 2);
+    if (!hits.length) return;
+    festBusy = true; showResults();
+    const cy = new Date().getFullYear(), out = [];
+    await Promise.all(hits.map(async f => {
+      const years = await Promise.all([cy, cy - 1, cy - 2].map(y => db.festivalDays({ venue: f.venue, city: f.cityQ, year: y, from: f.from, to: f.to }).catch(() => [])));
+      [cy, cy - 1, cy - 2].forEach((y, yi) => {
+        const known = (f.dates || {})[y] || [], got = years[yi].filter(r => r.a.length >= 3);
+        const days = [...new Set([...known, ...got.map(r => r.d)])].sort();
+        if (!days.length) return;
+        const dayRows = days.map((d, i) => { const r = got.find(x => x.d === d); return { id: 'fest:' + f.name + ':' + d, n: f.name + ' ' + y + (days.length > 1 ? ' · Day ' + (i + 1) : ''), t: f.name, d, v: f.venue, l: f.city, a: r ? r.a : [], f: 1, src: 'festival', day: days.length > 1 ? i + 1 : null }; });
+        if (days.length > 1) out.push({ id: 'fest:' + f.name + ':' + y, n: f.name + ' ' + y + ' · Whole festival', t: f.name, d: days[0], v: f.venue, l: f.city, a: [...new Set(dayRows.flatMap(r => r.a))], f: 1, src: 'festival', day: null });
+        out.push(...dayRows);
+      });
+    }));
+    if (festQ === q) { fest = out; festBusy = false; showResults(); }
+  };
+  const fetchPast = q => { fetchFest(q); clearTimeout(timer); if (ctrl) ctrl.abort(); if (q.length < 3) { past = []; pastQ = ''; return; }
     timer = setTimeout(async () => { ctrl = new AbortController(); pastBusy = true; showResults();
       try { past = await db.searchPast(q, ctrl.signal); pastQ = q; } catch (x) { if (x.name !== 'AbortError') { past = []; pastQ = q; } } pastBusy = false; showResults(); }, 450); };
   const pick = async x => { picked = x;
-    e.event_id = x.src ? null : x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : isNew ? [] : e.artists;
-    $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind; syncDay();
+    e.event_id = x.src ? null : x.id; e.title = x.t || x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : isNew ? [] : e.artists;
+    $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
+    if (x.src === 'festival') { e.day = x.day || null; $('#dayOn').checked = !!x.day; if (x.day) $('#day').value = x.day; }
+    syncDay();
     if (e.kind === 'festival') chosen.delete('venue'); // festival stamp starts off; the logo is the page art instead
     await autoFestivalArt();
     showResults(); drawSets(); drawArts(); drawStampChoices(); drawMissing();
@@ -382,13 +406,16 @@ async function editor(existing) {
     const D = await events(), words = q.split(/\s+/);
     const up = D.events.filter(x => words.every(w => x._s.includes(w))).sort((a, b) => (b.n.toLowerCase().includes(q) - a.n.toLowerCase().includes(q)) || (a.d < b.d ? -1 : 1)).slice(0, 25);
     const old = pastQ === q ? past.slice().sort((a, b) => (a.d < b.d ? 1 : -1)) : [];
-    const rows = [...old, ...up];
+    const fr = festQ === q ? fest : [];
+    const rows = [...fr, ...old, ...up];
     const item = (x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n || (x.src ? x.a.join(', ') + ' at ' + x.v : x.a.slice(0, 3).join(', ')))}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)}${x.src ? '' : ' · ' + x.a.length + ' artists'}</small></button>`;
     const head = t => `<p class="hint" style="padding:6px 12px;margin:0;font:600 10px var(--mono);letter-spacing:.12em;background:rgba(10,49,97,.06)">${t}</p>`;
     res.style.display = '';
-    res.innerHTML = (old.length ? head('PAST SHOWS · SETLIST.FM') + old.map((x, i) => item(x, i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
-      (up.length ? head('TODAY AND UPCOMING · EDMTRAIN') + up.map((x, i) => item(x, old.length + i)).join('') : '') +
-      (!old.length && !up.length && !pastBusy ? '<p class="hint" style="padding:10px">No matches. Try the artist and the venue, like “mau p pacha”, or fill it in below.</p>' : '');
+    const fitem = (x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n)}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)} · ${x.a.length ? x.a.length + ' artists' : 'lineup not logged yet, add the sets you saw'}</small></button>`;
+    res.innerHTML = (fr.length ? head('FESTIVALS') + fr.map((x, i) => fitem(x, i)).join('') : festBusy ? head('LOOKING UP FESTIVAL DAYS…') : '') +
+      (old.length ? head('PAST SHOWS · SETLIST.FM') + old.map((x, i) => item(x, fr.length + i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
+      (up.length ? head('TODAY AND UPCOMING · EDMTRAIN') + up.map((x, i) => item(x, fr.length + old.length + i)).join('') : '') +
+      (!fr.length && !festBusy && !old.length && !up.length && !pastBusy ? '<p class="hint" style="padding:10px">No matches. Try the artist and the venue, like “mau p pacha”, or fill it in below.</p>' : '');
     $$('#res button').forEach(b => b.onclick = () => pick(rows[+b.dataset.i]));
   };
   $('#q').addEventListener('input', () => { fetchPast($('#q').value.trim().toLowerCase()); showResults(); });

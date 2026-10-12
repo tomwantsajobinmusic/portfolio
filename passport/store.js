@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791785356';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791785651';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -90,4 +90,16 @@ export async function getPublicBook(username) {
   if (!profile) return null;
   const { data: entries } = await sb.from('entries').select('*').eq('user_id', profile.id).order('num', { ascending: true, nullsFirst: false }).order('date', { ascending: true });
   return { profile, entries: entries || [] };
+}
+
+/* ---------- shared logo directory ---------- */
+export async function listLogos() {
+  if (!LIVE) return [];
+  const { data, error } = await sb.from('logos').select('kind,name,key,url').order('created_at', { ascending: false }).limit(2000); if (error) throw error; return data;
+}
+export async function addLogo({ name, kind, url, auto }) {
+  if (!LIVE) throw new Error('Connect the backend to add logos.');
+  const { data } = await sb.auth.getSession(); if (!data.session) throw new Error('Sign in to add logos.');
+  const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ name, kind, url, auto: !!auto }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Could not add that logo.'); return j.logo;
 }

@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791785356';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791785356';
+import * as db from './store.js?v=1791785651';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791785651';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -21,7 +21,11 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { 
 
 /* ---------- shared data ---------- */
 let LOGOS = null, EVENTS = null, DEMO = false, state = { profile: null, entries: [] };
-const logos = async () => LOGOS || (LOGOS = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []));
+const CAT = { dj: 'DJs', festival: 'Festivals', club: 'Clubs', venue: 'Venues' };
+const logos = async (fresh) => { if (LOGOS && !fresh) return LOGOS;
+  const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
+  const shared = await db.listLogos().catch(() => []);
+  return LOGOS = [...shared.map(l => ({ cat: CAT[l.kind], name: l.name, key: l.key, src: l.url })), ...base.map(l => ({ ...l, src: 'data/' + l.file }))]; };
 const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
 const logoFor = (name, cats) => (LOGOS || []).find(l => (!cats || cats.includes(l.cat)) && (l.key === keyOf(name) || keyOf(name).startsWith(l.key) && l.key.length > 4));
 
@@ -297,6 +301,7 @@ async function editor(existing) {
     <div class="section"><h3>4. PAGE ART</h3>
       <div class="arts" id="arts"></div>
       <p class="hint" style="margin-top:8px">Pick a logo or upload a photo. It gets engraved like a passport page.</p>
+      <div id="missing" style="margin-top:14px"></div>
     </div>
 
     <div class="section"><h3>5. STAMPS</h3>
@@ -322,8 +327,17 @@ async function editor(existing) {
   const pick = async x => { picked = x;
     e.event_id = x.src ? null : x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? x.a.slice() : [];
     $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
-    showResults(); drawSets(); drawArts(); drawStampChoices();
-    if (x.src && x.venueId) { try { const all = await db.pastLineup(x.venueId, x.d); if (all.length) { e.lineup = [...new Set([...all, ...e.lineup])]; if (all.length > 4 && e.kind !== 'festival') { e.kind = 'festival'; $('#k').value = 'festival'; } drawSets(); drawArts(); drawStampChoices(); } } catch (err) {} } };
+    if (e.kind === 'festival') chosen.delete('venue'); // festival stamp starts off; the logo is the page art instead
+    await autoFestivalArt();
+    showResults(); drawSets(); drawArts(); drawStampChoices(); drawMissing();
+    if (x.src && x.venueId) { try { const all = await db.pastLineup(x.venueId, x.d); if (all.length) { e.lineup = [...new Set([...all, ...e.lineup])]; if (all.length > 4 && e.kind !== 'festival') { e.kind = 'festival'; $('#k').value = 'festival'; chosen.delete('venue'); await autoFestivalArt(); } drawSets(); drawArts(); drawStampChoices(); drawMissing(); } } catch (err) {} } };
+  // Festivals: their logo becomes the page background automatically (found and added to the directory if missing).
+  const autoFestivalArt = async () => {
+    if (e.kind !== 'festival' || !e.title || (artChoice && artChoice.kind !== 'logo')) return;
+    let fl = logoFor(e.title, ['Festivals']);
+    if (!fl) { toast('Finding the ' + e.title + ' logo…', 4000); try { await db.addLogo({ name: e.title, kind: 'festival', auto: true }); await logos(true); fl = logoFor(e.title, ['Festivals']); } catch (err) {} }
+    if (fl) { artChoice = { kind: 'logo', src: fl.src }; drawArts(); drawMissing(); }
+  };
   const showResults = async () => {
     const q = $('#q').value.trim().toLowerCase(); if (!q) { res.innerHTML = ''; res.style.display = 'none'; return; }
     const D = await events(), words = q.split(/\s+/);
@@ -343,16 +357,16 @@ async function editor(existing) {
 
   // sets
   const drawSets = () => { const all = [...new Set([...(e.lineup || []), ...(e.artists || [])])];
-    $('#sets').innerHTML = all.length ? all.map(a => { const lg = logoFor(a, ['DJs']); return `<button type="button" class="chip" data-a="${esc(a)}" aria-pressed="${e.artists.includes(a)}">${lg ? `<img src="data/${esc(lg.file.replace(/^logos\//, 'logos/'))}" alt="">` : ''}${esc(a)}</button>`; }).join('') : '<p class="hint">Pick a show above or add artists yourself.</p>';
-    $$('#sets [data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; e.artists = e.artists.includes(a) ? e.artists.filter(x => x !== a) : [...e.artists, a]; drawSets(); drawArts(); drawStampChoices(); }); };
+    $('#sets').innerHTML = all.length ? all.map(a => { const lg = logoFor(a, ['DJs']); return `<button type="button" class="chip" data-a="${esc(a)}" aria-pressed="${e.artists.includes(a)}">${lg ? `<img src="${esc(lg.src)}" alt="">` : ''}${esc(a)}</button>`; }).join('') : '<p class="hint">Pick a show above or add artists yourself.</p>';
+    $$('#sets [data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; e.artists = e.artists.includes(a) ? e.artists.filter(x => x !== a) : [...e.artists, a]; drawSets(); drawArts(); drawStampChoices(); drawMissing(); }); };
   $('#addAB').onclick = () => { const a = $('#addA').value.trim(); if (!a) return; if (!e.artists.includes(a)) e.artists.push(a); $('#addA').value = ''; drawSets(); drawArts(); drawStampChoices(); };
   drawSets();
 
   // page art choices: venue/festival logo, artist logos, upload, none
   let artChoice = e.bg?.url ? { kind: 'keep' } : null;
   const drawArts = () => {
-    const opts = []; const vl = logoFor(e.title, ['Clubs', 'Venues']) || logoFor(e.venue, ['Clubs', 'Venues']); if (vl) opts.push({ label: vl.name, src: 'data/' + vl.file });
-    e.artists.forEach(a => { const lg = logoFor(a, ['DJs']); if (lg && !opts.some(o => o.src.endsWith(lg.file))) opts.push({ label: lg.name, src: 'data/' + lg.file }); });
+    const opts = []; const vl = logoFor(e.title, ['Festivals', 'Clubs', 'Venues']) || logoFor(e.venue, ['Clubs', 'Venues', 'Festivals']); if (vl) opts.push({ label: vl.name, src: vl.src });
+    e.artists.forEach(a => { const lg = logoFor(a, ['DJs']); if (lg && !opts.some(o => o.src === lg.src)) opts.push({ label: lg.name, src: lg.src }); });
     $('#arts').innerHTML = (e.bg?.url ? `<button type="button" data-k="keep" aria-pressed="${artChoice?.kind === 'keep'}"><img src="${esc(e.bg.url)}" alt="Current art"></button>` : '') +
       opts.map((o, i) => `<button type="button" data-o="${i}" aria-pressed="${artChoice?.src === o.src}" title="${esc(o.label)}"><img src="${esc(o.src)}" alt="${esc(o.label)}"></button>`).join('') +
       `<label class="filebtn" style="aspect-ratio:1;border:1px dashed var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font:500 11px var(--sans);color:var(--muted)">${artChoice?.kind === 'upload' ? 'PHOTO ADDED ✓' : 'UPLOAD<br>PHOTO OR LOGO'}<input type="file" accept="image/*" id="up"></label>` +
@@ -363,13 +377,43 @@ async function editor(existing) {
   };
   drawArts();
 
+  // logos nobody has added yet: let travelers fill the shared directory
+  let openFor = null;
+  const drawMissing = () => {
+    const need = [];
+    if (e.title && e.kind === 'festival' && !logoFor(e.title, ['Festivals'])) need.push({ name: e.title, kind: 'festival' });
+    if (e.venue && !logoFor(e.venue, ['Clubs', 'Venues', 'Festivals'])) need.push({ name: e.venue, kind: e.kind === 'festival' ? 'venue' : 'club' });
+    e.artists.forEach(a => { if (!logoFor(a, ['DJs'])) need.push({ name: a, kind: 'dj' }); });
+    const host = $('#missing'); if (!need.length) { host.innerHTML = ''; return; }
+    host.innerHTML = `<p class="hint" style="margin:0 0 8px">No logo yet for these. Add one and it’s there for everyone:</p><div class="chips">${need.map((n, i) => `<button type="button" class="chip" data-m="${i}" aria-pressed="${openFor === n.name}">+ ${esc(n.name)}</button>`).join('')}</div>
+      <div id="mform"></div>`;
+    $$('#missing [data-m]').forEach(b => b.onclick = () => { const n = need[+b.dataset.m]; openFor = openFor === n.name ? null : n.name; drawMissing(); if (openFor) logoForm(n); });
+    const cur = need.find(n => n.name === openFor); if (cur) logoForm(cur);
+  };
+  const logoForm = n => {
+    $('#mform').innerHTML = `<div style="margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,.55)">
+      <p style="margin:0 0 10px;font:600 12px var(--mono);letter-spacing:.08em">${esc(n.name.toUpperCase())} · ${n.kind === 'dj' ? 'ARTIST' : n.kind.toUpperCase()} LOGO</p>
+      <button type="button" class="btn small" id="lgAuto">FIND IT FOR ME</button>
+      <div class="row2" style="margin-top:10px"><input id="lgUrl" placeholder="or paste an image link" style="padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:#fff;font-size:14px;min-width:0"><button type="button" class="btn small ghost" id="lgAdd">ADD LINK</button></div>
+      <label class="btn small ghost filebtn" style="margin-top:10px">UPLOAD A FILE<input type="file" accept="image/*" id="lgFile"></label>
+      <p class="hint" id="lgMsg" style="margin:8px 0 0">Tip: right-click a logo on the web, choose “Copy image address”, paste it here.</p></div>`;
+    const msg = t => $('#lgMsg').textContent = t;
+    const done = async () => { await logos(true); openFor = null; toast(n.name + ' logo added. Thanks!'); drawSets(); drawArts(); drawStampChoices(); drawMissing(); };
+    const run = async (args, btn) => { btn.disabled = true; msg('Working on it…'); try { await db.addLogo({ name: n.name, kind: n.kind, ...args }); await done(); } catch (x) { msg(x.message); btn.disabled = false; } };
+    $('#lgAuto').onclick = ev => run({ auto: true }, ev.currentTarget);
+    $('#lgAdd').onclick = ev => { const u = $('#lgUrl').value.trim(); if (!u) return msg('Paste a link to the logo image first.'); run({ url: u }, ev.currentTarget); };
+    $('#lgFile').onchange = async ev => { const f = ev.target.files[0]; if (!f) return; if (f.size > 4e6) return msg('That file is over 4 MB.');
+      msg('Uploading…'); try { const url = await db.uploadImage(f, 'logo-src'); await run({ url }, $('#lgAdd')); } catch (x) { msg(x.message || 'Upload failed.'); } };
+  };
+  drawMissing();
+
   // stamp choices
   const autoStamps = () => {
     const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
-    const vl = logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Clubs', 'Venues']);
-    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: vl ? 'data/' + vl.file : null, ink: INKS.red } });
+    const vl = e.kind === 'festival' ? logoFor(e.title, ['Festivals']) || logoFor(e.venue, ['Clubs', 'Venues']) : logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Festivals', 'Clubs', 'Venues']);
+    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
-      out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: 'data/' + lg.file, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
+      out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
   };
   let chosen = new Set((e.stamps || []).map(s => s.k));

@@ -32,6 +32,14 @@ async function go(name, arg) { window.scrollTo(0, 0); await routes[name](arg); }
 async function start() {
   try { await db.init(); } catch (e) { console.error(e); }
   logos();
+  // Arriving from the email confirmation link: the link itself proves the beta password was used.
+  const q = new URLSearchParams(location.search), confirmed = q.has('confirmed') || /type=signup/.test(location.hash);
+  if (confirmed) {
+    store.set('rp-gate', 'ok'); store.set('rp-has-account', '1');
+    await new Promise(r => setTimeout(r, 300)); await db.signOut().catch(() => {});
+    history.replaceState(null, '', location.pathname);
+    return go('signin', 'Email confirmed. Sign in to open your passport.');
+  }
   if (store.get('rp-gate') !== 'ok') return go('gate');
   const user = await db.currentUser().catch(() => null);
   if (!user) return go('cover');
@@ -99,13 +107,14 @@ async function apply() {
     if (password.length < 8) return e.textContent = 'Password needs at least 8 characters.';
     const b = ev.submitter; b.disabled = true;
     try { await db.signUp({ username, email, password, invite: store.get('rp-invite') || '' }); store.set('rp-has-account', '1'); await loadMine(); go('setup'); }
-    catch (err) { e.textContent = err.message; b.disabled = false; }
+    catch (err) { if (err.pending) { store.set('rp-has-account', '1'); return go('signin', err.message); } e.textContent = err.message; b.disabled = false; }
   });
 }
-async function signin() {
+async function signin(note) {
   app.innerHTML = `<section class="screen paper">
     <button class="back" id="bk">← BACK</button>
     <p class="title">WELCOME BACK</p>
+    ${note ? `<p class="hint" style="text-align:center;margin:-8px 0 18px">${esc(note)}</p>` : ''}
     <form id="f">
       <label class="field"><span>EMAIL</span><input id="em" type="email" autocomplete="email" required></label>
       <label class="field"><span>PASSWORD</span><input id="pw" type="password" autocomplete="current-password" required></label>

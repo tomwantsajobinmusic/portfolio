@@ -25,9 +25,9 @@ export async function currentUser() {
 }
 export async function signUp({ username, email, password, invite }) {
   if (!LIVE) { const s = local(); s.user = { id: 'local', email }; s.profile = { username, name: '', home: '' }; saveLocal(s); return s.user; }
-  const { data, error } = await sb.auth.signUp({ email, password, options: { data: { username, invite } } });
+  const { data, error } = await sb.auth.signUp({ email, password, options: { data: { username, invite }, emailRedirectTo: new URL('./?confirmed=1', location.href.split('?')[0].split('#')[0]).href } });
   if (error) throw new Error(/invite/i.test(error.message) || /database error/i.test(error.message) ? 'That beta password did not check out. Start over from the first screen.' : error.message);
-  if (!data.session) throw new Error('Check your email to confirm your account, then come back and sign in.');
+  if (!data.session) { const e = new Error('Almost there. Check your email and tap the confirm link. It brings you back here to sign in.'); e.pending = true; throw e; }
   return data.user;
 }
 export async function signIn({ email, password }) {

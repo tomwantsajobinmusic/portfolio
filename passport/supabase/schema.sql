@@ -82,3 +82,12 @@ create policy "passport upload own" on storage.objects for insert to authenticat
 drop policy if exists "passport delete own" on storage.objects;
 create policy "passport delete own" on storage.objects for delete to authenticated
   using (bucket_id = 'passport' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- 6. View-only public books (/passport/?demo and ?u=username) and explicit page numbers.
+alter table public.entries add column if not exists num int;
+alter table public.profiles add column if not exists is_public boolean default false;
+drop policy if exists "public profiles readable" on public.profiles;
+create policy "public profiles readable" on public.profiles for select using (is_public);
+drop policy if exists "public entries readable" on public.entries;
+create policy "public entries readable" on public.entries for select
+  using (exists (select 1 from public.profiles p where p.id = entries.user_id and p.is_public));

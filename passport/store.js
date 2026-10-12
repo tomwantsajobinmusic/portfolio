@@ -36,6 +36,13 @@ export async function signIn({ email, password }) {
   if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Email or password is wrong.' : error.message);
   return data.user;
 }
+/* ---------- beta question: skip it on networks where someone has signed in ---------- */
+async function gateCall(body, token) {
+  const r = await fetch(SUPABASE_URL + '/functions/v1/gate-check', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token || SUPABASE_ANON_KEY) }, body: JSON.stringify(body) });
+  return r.ok ? r.json() : {};
+}
+export async function knownNetwork() { if (!LIVE) return false; try { return !!(await gateCall({ check: true })).known; } catch (e) { return false; } }
+export async function rememberNetwork() { if (!LIVE) return; try { const { data } = await sb.auth.getSession(); if (data.session) await gateCall({ remember: true }, data.session.access_token); } catch (e) {} }
 export async function signOut() { if (LIVE) await sb.auth.signOut(); else { const s = local(); s.user = null; saveLocal(s); } }
 
 /* ---------- profile ---------- */

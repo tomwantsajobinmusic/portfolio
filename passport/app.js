@@ -60,8 +60,10 @@ async function start() {
     history.replaceState(null, '', location.pathname);
     return go('signin', 'Email confirmed. Sign in to open your passport.');
   }
-  if (store.get('rp-gate') !== 'ok') return go('gate');
+  // Skip the beta question for anyone signed in, and on any network where someone has signed in before.
   const user = await db.currentUser().catch(() => null);
+  if (user) { store.set('rp-gate', 'ok'); db.rememberNetwork(); }
+  else if (store.get('rp-gate') !== 'ok') { if (await db.knownNetwork()) store.set('rp-gate', 'ok'); else return go('gate'); }
   if (!user) return go('cover');
   await loadMine();
   if (!state.profile || !state.profile.name) return go('setup');
@@ -126,7 +128,7 @@ async function apply() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return e.textContent = 'That email looks off.';
     if (password.length < 8) return e.textContent = 'Password needs at least 8 characters.';
     const b = ev.submitter; b.disabled = true;
-    try { await db.signUp({ username, email, password, invite: store.get('rp-invite') || '' }); store.set('rp-has-account', '1'); await loadMine(); go('setup'); }
+    try { await db.signUp({ username, email, password, invite: store.get('rp-invite') || '' }); store.set('rp-has-account', '1'); db.rememberNetwork(); await loadMine(); go('setup'); }
     catch (err) { if (err.pending) { store.set('rp-has-account', '1'); return go('signin', err.message); } e.textContent = err.message; b.disabled = false; }
   });
 }
@@ -145,7 +147,7 @@ async function signin(note) {
   $('#bk').onclick = () => go('cover');
   $('#f').addEventListener('submit', async ev => {
     ev.preventDefault(); const b = ev.submitter; b.disabled = true;
-    try { await db.signIn({ email: $('#em').value.trim(), password: $('#pw').value }); store.set('rp-has-account', '1'); await loadMine(); go(state.profile && state.profile.name ? 'book' : 'setup'); }
+    try { await db.signIn({ email: $('#em').value.trim(), password: $('#pw').value }); store.set('rp-has-account', '1'); db.rememberNetwork(); await loadMine(); go(state.profile && state.profile.name ? 'book' : 'setup'); }
     catch (err) { $('#e').textContent = err.message; b.disabled = false; }
   });
 }

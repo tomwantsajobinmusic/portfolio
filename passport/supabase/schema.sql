@@ -111,3 +111,11 @@ create policy "remove own logo" on public.logos for delete to authenticated usin
 
 -- 7. Optional festival day pages (Day 1, Day 2...). Null means the whole festival.
 alter table public.entries add column if not exists day smallint check (day between 1 and 7);
+
+-- 8. Networks where someone has signed in skip the beta question (gate-check function). Keyed IP hashes only.
+create table if not exists public.known_networks (
+  ip_hash text primary key,
+  user_id uuid references auth.users on delete cascade,
+  last_seen timestamptz default now()
+);
+alter table public.known_networks enable row level security; -- no policies: only the gate-check function reads or writes it

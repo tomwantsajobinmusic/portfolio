@@ -1,0 +1,407 @@
+import * as db from './store.js';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js';
+
+const app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const $ = sel => app.querySelector(sel);
+const $$ = sel => [...app.querySelectorAll(sel)];
+const toast = (t, ms = 2600) => { const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, ms); };
+const keyOf = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+const ord = n => n + (n % 100 > 10 && n % 100 < 14 ? 'TH' : ({ 1: 'ST', 2: 'ND', 3: 'RD' })[n % 10] || 'TH');
+const longDate = d => { if (!d) return ''; const [y, m, dd] = d.split('-').map(Number); return MONTHS[m - 1] + ' ' + ord(dd) + ' ' + y; };
+const stampDate = d => { if (!d) return ''; const [y, m, dd] = d.split('-').map(Number); return String(dd).padStart(2, '0') + ' ' + MONTHS[m - 1].slice(0, 3) + ' ' + y; };
+const cityUpper = c => String(c || '').toUpperCase();
+
+/* ---------- beta gate ---------- */
+const GATE_HASH = '3fd2e6e75cbd1c4a26c88394aca22e9bff0827d3e95952ea10cb9571694c18e2';
+const normInvite = s => s.trim().toLowerCase().replace(/\s+/g, ' ');
+async function sha256(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+/* ---------- shared data ---------- */
+let LOGOS = null, EVENTS = null, state = { profile: null, entries: [] };
+const logos = async () => LOGOS || (LOGOS = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []));
+const events = async () => EVENTS || (EVENTS = await fetch('data/events.json').then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
+const logoFor = (name, cats) => (LOGOS || []).find(l => (!cats || cats.includes(l.cat)) && (l.key === keyOf(name) || keyOf(name).startsWith(l.key) && l.key.length > 4));
+
+/* ---------- router ---------- */
+const routes = { gate, cover, apply, signin, setup, book, editor };
+async function go(name, arg) { window.scrollTo(0, 0); await routes[name](arg); }
+
+async function start() {
+  try { await db.init(); } catch (e) { console.error(e); }
+  logos();
+  if (store.get('rp-gate') !== 'ok') return go('gate');
+  const user = await db.currentUser().catch(() => null);
+  if (!user) return go('cover');
+  await loadMine();
+  if (!state.profile || !state.profile.name) return go('setup');
+  go('book');
+}
+async function loadMine() { state.profile = await db.getProfile(); state.entries = await db.listEntries(); }
+
+/* ---------- 0. gate ---------- */
+async function gate() {
+  app.innerHTML = `<section class="screen cover gate">
+    <img class="seal small" src="assets/seal-gold.png" alt="">
+    <form id="g" autocomplete="off">
+      <p class="gate-q">What do you want?</p>
+      <input id="ans" aria-label="Your answer" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="type it">
+      <div class="err" id="e"></div>
+      <button class="gold-btn" type="submit">Enter</button>
+    </form>
+    <span></span>
+  </section>`;
+  $('#ans').focus();
+  $('#g').addEventListener('submit', async ev => {
+    ev.preventDefault(); const a = normInvite($('#ans').value);
+    if (await sha256(a) === GATE_HASH) { store.set('rp-gate', 'ok'); store.set('rp-invite', a); go('cover'); }
+    else { $('#e').textContent = 'Not quite. Ask Thomas.'; $('#ans').select(); }
+  });
+}
+
+/* ---------- 1. cover ---------- */
+async function cover() {
+  const returning = store.get('rp-has-account') === '1';
+  app.innerHTML = `<section class="screen cover">
+    <h1>Rave Passport</h1>
+    <img class="seal" src="assets/seal-gold.png" alt="The rave passport crest: an eagle holding a fan and kandi under a disco ball">
+    <div>
+      <button class="gold-btn" id="main">${returning ? 'Continue' : 'Application'}</button><br>
+      <button class="link" id="alt">${returning ? 'New here? Apply' : 'Already have a passport? Sign in'}</button>
+    </div>
+  </section>`;
+  $('#main').onclick = () => go(returning ? 'signin' : 'apply');
+  $('#alt').onclick = () => go(returning ? 'apply' : 'signin');
+}
+
+/* ---------- 2. application (sign up) ---------- */
+async function apply() {
+  app.innerHTML = `<section class="screen paper">
+    <button class="back" id="bk">← BACK</button>
+    <p class="title">TRAVELER INFORMATION</p>
+    <form id="f" novalidate>
+      <label class="field"><span>USER NAME</span><input id="u" autocomplete="username" autocapitalize="none" required maxlength="24" placeholder="thomasbrown"></label>
+      <label class="field"><span>EMAIL</span><input id="em" type="email" autocomplete="email" required></label>
+      <label class="field"><span>PASSWORD</span><input id="pw" type="password" autocomplete="new-password" minlength="8" required></label>
+      <div class="err" id="e"></div>
+      <button class="btn" type="submit">CONTINUE</button>
+    </form>
+    <p class="hint" style="margin-top:14px">${db.mode === 'local' ? 'Demo mode: your passport is saved in this browser only.' : 'Your book is private to you.'}</p>
+  </section>`;
+  $('#bk').onclick = () => go('cover');
+  $('#f').addEventListener('submit', async ev => {
+    ev.preventDefault(); const e = $('#e'); e.textContent = '';
+    const username = $('#u').value.trim().toLowerCase().replace(/^@/, ''), email = $('#em').value.trim(), password = $('#pw').value;
+    if (!/^[a-z0-9_.]{2,24}$/.test(username)) return e.textContent = 'User name: 2 to 24 letters, numbers, dots or underscores.';
+    if (!/^\S+@\S+\.\S+$/.test(email)) return e.textContent = 'That email looks off.';
+    if (password.length < 8) return e.textContent = 'Password needs at least 8 characters.';
+    const b = ev.submitter; b.disabled = true;
+    try { await db.signUp({ username, email, password, invite: store.get('rp-invite') || '' }); store.set('rp-has-account', '1'); await loadMine(); go('setup'); }
+    catch (err) { e.textContent = err.message; b.disabled = false; }
+  });
+}
+async function signin() {
+  app.innerHTML = `<section class="screen paper">
+    <button class="back" id="bk">← BACK</button>
+    <p class="title">WELCOME BACK</p>
+    <form id="f">
+      <label class="field"><span>EMAIL</span><input id="em" type="email" autocomplete="email" required></label>
+      <label class="field"><span>PASSWORD</span><input id="pw" type="password" autocomplete="current-password" required></label>
+      <div class="err" id="e"></div>
+      <button class="btn" type="submit">CONTINUE</button>
+    </form>
+  </section>`;
+  $('#bk').onclick = () => go('cover');
+  $('#f').addEventListener('submit', async ev => {
+    ev.preventDefault(); const b = ev.submitter; b.disabled = true;
+    try { await db.signIn({ email: $('#em').value.trim(), password: $('#pw').value }); store.set('rp-has-account', '1'); await loadMine(); go(state.profile && state.profile.name ? 'book' : 'setup'); }
+    catch (err) { $('#e').textContent = err.message; b.disabled = false; }
+  });
+}
+
+/* ---------- 3. profile setup / edit ---------- */
+async function setup() {
+  const p = state.profile || {};
+  app.innerHTML = `<section class="screen paper">
+    ${state.profile && state.profile.name ? '<button class="back" id="bk">← BOOK</button>' : ''}
+    <div class="head"><span>TRAVELER INFORMATION</span><small>@${esc(p.username || '')}</small></div>
+    <div class="pf-grid">
+      <label class="pf-photo filebtn" id="ph">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="Your passport photo">` : 'TAP TO ADD<br>PASSPORT<br>PHOTO'}<input type="file" accept="image/*" id="pf" aria-label="Passport photo"></label>
+      <div>
+        <label class="field"><span>NAME</span><input id="name" value="${esc(p.name)}" maxlength="40" placeholder="THOMAS BROWN"></label>
+        <label class="field"><span>HOME</span><input id="home" value="${esc(p.home)}" maxlength="40" placeholder="AUSTIN, TX USA"></label>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:6px">
+      <label class="field"><span>RAVES BEFORE THIS APP</span><input id="rb" type="number" min="0" max="9999" value="${esc(p.theme?.raves_before ?? '')}" placeholder="0"></label>
+      <label class="field"><span>FESTIVALS BEFORE</span><input id="fb" type="number" min="0" max="999" value="${esc(p.theme?.fests_before ?? '')}" placeholder="0"></label>
+    </div>
+    <label class="field"><span>FAVORITE DJS</span><input id="djs" value="${esc(p.favorite_djs)}" maxlength="80"></label>
+    <label class="field"><span>FAVORITE FESTIVAL</span><input id="fest" value="${esc(p.favorite_festival)}" maxlength="60"></label>
+    <label class="field"><span>FAVORITE GENRE</span><input id="genre" value="${esc(p.favorite_genre)}" maxlength="60"></label>
+    <div class="err" id="e"></div>
+    <button class="btn" id="save">${state.profile && state.profile.name ? 'SAVE' : 'ISSUE MY PASSPORT'}</button>
+    ${state.profile && state.profile.name ? '<button class="link" id="out" style="margin-top:14px">Sign out</button>' : ''}
+  </section>`;
+  let photoBlob = null;
+  $('#pf').onchange = async ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    try { const im = await fileToImage(f); const c = passportPhoto(im); photoBlob = await toBlob(c); $('#ph').firstChild.replaceWith(Object.assign(document.createElement('img'), { src: c.toDataURL(), alt: 'Your passport photo' })); }
+    catch (err) { toast(err.message); }
+  };
+  if ($('#bk')) $('#bk').onclick = () => go('book');
+  if ($('#out')) $('#out').onclick = async () => { await db.signOut(); go('cover'); };
+  $('#save').onclick = async ev => {
+    const b = ev.currentTarget, name = $('#name').value.trim(); if (!name) return $('#e').textContent = 'Add your name.';
+    b.disabled = true;
+    try {
+      const row = { username: p.username, name, home: $('#home').value.trim(), favorite_djs: $('#djs').value.trim(), favorite_festival: $('#fest').value.trim(), favorite_genre: $('#genre').value.trim(),
+        theme: { ...(p.theme || {}), raves_before: +$('#rb').value || 0, fests_before: +$('#fb').value || 0 } };
+      if (photoBlob) row.photo_url = await db.uploadImage(photoBlob, 'photo');
+      state.profile = await db.saveProfile(row); go('book');
+    } catch (err) { $('#e').textContent = err.message; b.disabled = false; }
+  };
+}
+
+/* ---------- stamp rendering cache ---------- */
+const stampCache = new Map();
+async function stampURL(p) {
+  const k = JSON.stringify(p); if (stampCache.has(k)) return stampCache.get(k);
+  let logo = null; if (p.logo) try { logo = await loadImage(p.logo); } catch (e) {}
+  const url = p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo }).toDataURL();
+  stampCache.set(k, url); return url;
+}
+
+/* ---------- 4. the book ---------- */
+const mrz = p => { const n = (p.name || 'RAVER').toUpperCase().replace(/[^A-Z ]/g, '').trim().split(/\s+/); const sur = n.length > 1 ? n.pop() : n[0], giv = n.join('<');
+  return [('P<RVE' + sur + '<<' + giv + '<'.repeat(44)).slice(0, 44), ('R4VE' + String(state.entries.length).padStart(5, '0') + '<4RVE' + '0'.repeat(7) + 'M2610119' + '<'.repeat(44)).slice(0, 44)]; };
+
+async function book(openIndex) {
+  await logos();
+  const p = state.profile, E = state.entries, tb = p.theme || {};
+  const fests = E.filter(e => e.kind === 'festival').length + (tb.fests_before || 0), raves = E.length + (tb.raves_before || 0);
+  const hl = (p.highlighted && p.highlighted.length ? p.highlighted.map(id => E.find(e => e.id === id)).filter(Boolean) : E.slice(-3).reverse()).slice(0, 3);
+  const [m1, m2] = mrz(p);
+  app.innerHTML = `<div class="book" id="bk">
+    <article class="page" data-i="0">
+      <div class="inner">
+        <p class="pf-handle">@${esc(p.username || '')}</p>
+        <div class="head" style="margin-top:4px"><span>TRAVELER INFORMATION</span></div>
+        <div class="pf-grid">
+          <div class="pf-photo">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="">` : 'NO PHOTO'}</div>
+          <div><div class="kv"><b>NAME</b><i>${esc(p.name)}</i></div><div class="kv"><b>HOME</b><i>${esc(p.home)}</i></div>
+          <div class="kv"><b>RAVES ATTENDED</b><i>${raves}</i></div><div class="kv"><b>FESTIVALS ATTENDED</b><i>${String(fests).padStart(2, '0')}</i></div></div>
+        </div>
+        <div class="pf-low">
+          ${p.favorite_djs ? `<div class="kv"><b>FAVORITE DJS</b><i>${esc(p.favorite_djs)}</i></div>` : ''}
+          ${p.favorite_festival ? `<div class="kv"><b>FAVORITE FESTIVAL</b><i>${esc(p.favorite_festival)}</i></div>` : ''}
+          ${p.favorite_genre ? `<div class="kv"><b>FAVORITE GENRE</b><i>${esc(p.favorite_genre)}</i></div>` : ''}
+          <div class="kv"><b>HIGHLIGHTED STAMPS</b></div><div class="pf-stamps" id="hl"></div>
+        </div>
+      </div>
+      <div class="mrz" aria-hidden="true">${esc(m1)}<br>${esc(m2)}</div>
+    </article>
+    ${E.map((e, i) => `<article class="page tint-${esc(e.bg?.tint || 'cream')}" data-i="${i + 1}" data-id="${esc(e.id)}">
+      <span class="num">#${(tb.raves_before || 0) + i + 1}</span>
+      ${e.bg?.url ? `<img class="art" src="${esc(e.bg.url)}" alt="" style="${e.bg.y != null ? `top:${+e.bg.y}%;` : ''}${e.bg.s ? `width:${86 * e.bg.s}%;` : ''}">` : ''}
+      <div class="stamps" data-id="${esc(e.id)}"></div>
+      <div class="facts">
+        <h2>${esc(e.title)}</h2>
+        ${e.artists?.length ? `<p><span>${e.kind === 'festival' || e.artists.length > 1 ? 'ARTISTS' : 'LINEUP'}:</span> ${esc(e.artists.join(', '))}</p>` : ''}
+        <p><span>DATE:</span> ${esc(longDate(e.date))}</p>
+        <p><span>CITY:</span> ${esc(cityUpper(e.city))}</p>
+        <p class="notes"><span>NOTES:</span> ${esc(e.notes || '')}</p>
+      </div>
+    </article>`).join('')}
+  </div>
+  <span class="dots" id="dots"></span>
+  <nav class="bar" id="bar">
+    <button id="prof">Profile</button>
+    <button class="primary" id="add">+ Add show</button>
+    <button id="edit" class="hidden">Edit page</button>
+  </nav>`;
+  // stamps
+  for (const e of E) { const host = app.querySelector(`.stamps[data-id="${CSS.escape(e.id)}"]`); await drawStamps(host, e.stamps || []); }
+  const hlHost = $('#hl'); for (const e of hl) { const s = (e.stamps || [])[0]; if (s) { const im = new Image(); im.src = await stampURL(s.p); im.alt = e.title; hlHost.append(im); } }
+  // paging
+  const bk = $('#bk'), dots = $('#dots');
+  const cur = () => Math.round(bk.scrollLeft / bk.clientWidth);
+  const upd = () => { const i = cur(); dots.textContent = (i + 1) + ' / ' + (E.length + 1); $('#edit').classList.toggle('hidden', i === 0); };
+  bk.addEventListener('scroll', () => requestAnimationFrame(upd)); upd();
+  if (openIndex) requestAnimationFrame(() => { bk.scrollLeft = openIndex * bk.clientWidth; upd(); });
+  $('#prof').onclick = () => go('setup');
+  $('#add').onclick = () => go('editor', null);
+  $('#edit').onclick = () => { const i = cur(); if (i > 0) go('editor', E[i - 1]); };
+  if (!E.length) toast('Tap “+ Add show” to stamp your first page.', 3500);
+}
+async function drawStamps(host, list, editing) {
+  host.innerHTML = '';
+  for (const s of list) {
+    const im = new Image(); im.src = await stampURL(s.p); im.alt = s.p.top || s.p.label || 'stamp'; im.dataset.k = s.k; im.draggable = false;
+    im.style.left = s.x + '%'; im.style.top = s.y + '%'; im.style.width = (44 * (s.s || 1)) + '%'; im.style.transform = `translate(-50%,-50%) rotate(${s.r || 0}deg)`;
+    host.append(im);
+  }
+  host.classList.toggle('editing', !!editing);
+}
+
+/* ---------- 5. add / edit a page ---------- */
+async function editor(existing) {
+  await logos();
+  const isNew = !existing;
+  const e = existing ? JSON.parse(JSON.stringify(existing)) : { kind: 'show', title: '', venue: '', city: '', date: new Date().toISOString().slice(0, 10), artists: [], lineup: [], notes: '', bg: { tint: 'cream' }, stamps: [], shot_it: false };
+  let bgBlob = null;
+  app.innerHTML = `<section class="screen sheet paper">
+    <button class="back" id="bk">← BOOK</button>
+    <p class="title">${isNew ? 'NEW PAGE' : 'EDIT PAGE'}</p>
+
+    <div class="section"><h3>1. FIND THE SHOW</h3>
+      <label class="field"><span>SEARCH FESTIVALS, ARTISTS, VENUES, CITIES</span><input id="q" placeholder="ACL, Fisher, Concourse, Austin…" autocomplete="off"></label>
+      <div class="results" id="res" role="listbox" aria-label="Shows"></div>
+      <p class="hint" style="margin-top:8px">Show data from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a> covers today and upcoming shows. For older ones, fill it in below.</p>
+    </div>
+
+    <div class="section"><h3>2. THE DETAILS</h3>
+      <label class="field"><span>FESTIVAL OR SHOW NAME</span><input id="t" value="${esc(e.title)}" maxlength="60"></label>
+      <div class="row2"><label class="field"><span>VENUE</span><input id="v" value="${esc(e.venue)}" maxlength="60"></label><label class="field"><span>CITY</span><input id="c" value="${esc(e.city)}" maxlength="40"></label></div>
+      <div class="row2"><label class="field"><span>DATE</span><input id="d" type="date" value="${esc(e.date)}"></label>
+      <label class="field"><span>TYPE</span><select id="k"><option value="show">Show</option><option value="festival">Festival</option></select></label></div>
+    </div>
+
+    <div class="section"><h3>3. SETS I SAW</h3>
+      <div class="chips" id="sets"></div>
+      <div class="row2" style="margin-top:10px"><input id="addA" class="field" style="margin:0;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.55)" placeholder="Add an artist"><button class="btn small ghost" id="addAB">ADD</button></div>
+    </div>
+
+    <div class="section"><h3>4. PAGE ART</h3>
+      <div class="arts" id="arts"></div>
+      <p class="hint" style="margin-top:8px">Pick a logo or upload a photo. It gets engraved like a passport page.</p>
+    </div>
+
+    <div class="section"><h3>5. STAMPS</h3>
+      <div class="chips" id="stp"></div>
+      <label class="chip" style="margin-top:8px"><input type="checkbox" id="shot" ${e.shot_it ? 'checked' : ''}> I shot it</label>
+    </div>
+
+    <div class="section"><h3>6. NOTES</h3>
+      <label class="field"><textarea id="n" maxlength="400" aria-label="Notes">${esc(e.notes)}</textarea></label>
+    </div>
+    <div class="err" id="err"></div>
+    <button class="btn" id="save">${isNew ? 'MAKE THE PAGE' : 'SAVE'}</button>
+    ${isNew ? '' : '<button class="btn ghost" id="del" style="margin-top:10px">DELETE PAGE</button>'}
+  </section>`;
+  $('#k').value = e.kind;
+  $('#bk').onclick = () => go('book', existing ? state.entries.indexOf(existing) + 1 : 0);
+
+  // search
+  const res = $('#res'); let picked = null;
+  const showResults = async () => {
+    const q = $('#q').value.trim().toLowerCase(); if (!q) { res.innerHTML = ''; res.style.display = 'none'; return; }
+    const D = await events(), words = q.split(/\s+/);
+    const rows = D.events.filter(x => words.every(w => x._s.includes(w))).sort((a, b) => (b.n.toLowerCase().includes(q) - a.n.toLowerCase().includes(q)) || (a.d < b.d ? -1 : 1)).slice(0, 40);
+    res.style.display = ''; res.innerHTML = rows.length ? rows.map((x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n || x.a.slice(0, 3).join(', '))}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)} · ${x.a.length} artists</small></button>`).join('') : '<p class="hint" style="padding:10px">No matches. Fill it in below.</p>';
+    $$('#res button').forEach(b => b.onclick = () => { const x = rows[+b.dataset.i]; picked = x;
+      e.event_id = x.id; e.title = x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = [];
+      $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
+      showResults(); drawSets(); drawArts(); drawStampChoices(); });
+  };
+  $('#q').addEventListener('input', showResults); showResults();
+
+  // sets
+  const drawSets = () => { const all = [...new Set([...(e.lineup || []), ...(e.artists || [])])];
+    $('#sets').innerHTML = all.length ? all.map(a => { const lg = logoFor(a, ['DJs']); return `<button type="button" class="chip" data-a="${esc(a)}" aria-pressed="${e.artists.includes(a)}">${lg ? `<img src="data/${esc(lg.file.replace(/^logos\//, 'logos/'))}" alt="">` : ''}${esc(a)}</button>`; }).join('') : '<p class="hint">Pick a show above or add artists yourself.</p>';
+    $$('#sets [data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; e.artists = e.artists.includes(a) ? e.artists.filter(x => x !== a) : [...e.artists, a]; drawSets(); drawArts(); drawStampChoices(); }); };
+  $('#addAB').onclick = () => { const a = $('#addA').value.trim(); if (!a) return; if (!e.artists.includes(a)) e.artists.push(a); $('#addA').value = ''; drawSets(); drawArts(); drawStampChoices(); };
+  drawSets();
+
+  // page art choices: venue/festival logo, artist logos, upload, none
+  let artChoice = e.bg?.url ? { kind: 'keep' } : null;
+  const drawArts = () => {
+    const opts = []; const vl = logoFor(e.title, ['Clubs', 'Venues']) || logoFor(e.venue, ['Clubs', 'Venues']); if (vl) opts.push({ label: vl.name, src: 'data/' + vl.file });
+    e.artists.forEach(a => { const lg = logoFor(a, ['DJs']); if (lg && !opts.some(o => o.src.endsWith(lg.file))) opts.push({ label: lg.name, src: 'data/' + lg.file }); });
+    $('#arts').innerHTML = (e.bg?.url ? `<button type="button" data-k="keep" aria-pressed="${artChoice?.kind === 'keep'}"><img src="${esc(e.bg.url)}" alt="Current art"></button>` : '') +
+      opts.map((o, i) => `<button type="button" data-o="${i}" aria-pressed="${artChoice?.src === o.src}" title="${esc(o.label)}"><img src="${esc(o.src)}" alt="${esc(o.label)}"></button>`).join('') +
+      `<label class="filebtn" style="aspect-ratio:1;border:1px dashed var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font:500 11px var(--sans);color:var(--muted)">${artChoice?.kind === 'upload' ? 'PHOTO ADDED ✓' : 'UPLOAD<br>PHOTO OR LOGO'}<input type="file" accept="image/*" id="up"></label>` +
+      `<button type="button" data-k="none" aria-pressed="${artChoice?.kind === 'none'}">NO ART</button>`;
+    $$('#arts [data-o]').forEach(b => b.onclick = () => { artChoice = { kind: 'logo', src: opts[+b.dataset.o].src }; drawArts(); });
+    $$('#arts [data-k]').forEach(b => b.onclick = () => { artChoice = { kind: b.dataset.k }; drawArts(); });
+    $('#up').onchange = ev => { const f = ev.target.files[0]; if (f) { artChoice = { kind: 'upload', file: f }; drawArts(); } };
+  };
+  drawArts();
+
+  // stamp choices
+  const autoStamps = () => {
+    const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
+    const vl = logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Clubs', 'Venues']);
+    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: vl ? 'data/' + vl.file : null, ink: INKS.red } });
+    e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
+      out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: 'data/' + lg.file, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
+    return out;
+  };
+  let chosen = new Set((e.stamps || []).map(s => s.k));
+  if (isNew) chosen = new Set(['venue']);
+  const drawStampChoices = () => { const A = autoStamps(); if (isNew) e.artists.forEach(a => chosen.add('a:' + a));
+    $('#stp').innerHTML = A.map(s => `<button type="button" class="chip" data-k="${esc(s.id)}" aria-pressed="${chosen.has(s.id)}">${esc(s.label)}</button>`).join('') || '<p class="hint">Stamps appear once there is a show.</p>';
+    $$('#stp [data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; chosen.has(k) ? chosen.delete(k) : chosen.add(k); b.setAttribute('aria-pressed', chosen.has(k)); }); };
+  drawStampChoices();
+
+  if (!isNew) $('#del').onclick = async () => { if (!confirm('Delete this page? This cannot be undone.')) return; await db.deleteEntry(e.id); state.entries = await db.listEntries(); go('book'); };
+
+  $('#save').onclick = async ev => {
+    const b = ev.currentTarget, err = $('#err'); err.textContent = '';
+    e.title = $('#t').value.trim(); e.venue = $('#v').value.trim(); e.city = $('#c').value.trim(); e.date = $('#d').value; e.kind = $('#k').value; e.notes = $('#n').value.trim(); e.shot_it = $('#shot').checked;
+    if (!e.title) return err.textContent = 'Give the page a name.'; if (!e.date) return err.textContent = 'Add the date.';
+    b.disabled = true; b.textContent = 'ENGRAVING…';
+    try {
+      if (artChoice && artChoice.kind !== 'keep') {
+        if (artChoice.kind === 'none') e.bg = { ...e.bg, url: null };
+        else { const im = artChoice.kind === 'upload' ? await fileToImage(artChoice.file) : await loadImage(artChoice.src);
+          const c = engrave(im, { style: 'passport', ink: INKS.navy, max: 900 }); e.bg = { ...e.bg, url: await db.uploadImage(await toBlob(c), 'art') }; }
+      }
+      // keep positions of stamps that stay, place new ones in an open spot
+      const old = new Map((e.stamps || []).map(s => [s.k, s])), A = autoStamps(); if (e.shot_it) A.push({ id: 'shot', label: 'I shot it', p: { kind: 'shot' } });
+      const spots = [[27, 18], [73, 24], [30, 42], [72, 47], [50, 31], [24, 58], [76, 60]]; let si = 0;
+      e.stamps = A.filter(s => chosen.has(s.id) || s.id === 'shot').map(s => { const o = old.get(s.id); if (o) return { ...o, p: s.p };
+        const [x, y] = spots[si++ % spots.length]; return { k: s.id, p: s.p, x, y, r: Math.round(Math.random() * 24 - 12), s: s.p.shape === 'logo' ? .62 : s.p.kind === 'shot' ? .62 : .72 }; });
+      delete e._s; const saved = await db.saveEntry(e); state.entries = await db.listEntries();
+      go('customize', saved.id || e.id);
+    } catch (x) { console.error(x); err.textContent = x.message || 'Could not save. Try again.'; b.disabled = false; b.textContent = isNew ? 'MAKE THE PAGE' : 'SAVE'; }
+  };
+}
+
+/* ---------- 6. customize: drag stamps, size, turn, ink, page tint ---------- */
+routes.customize = async function customize(id) {
+  const idx = state.entries.findIndex(x => x.id === id), e = JSON.parse(JSON.stringify(state.entries[idx]));
+  await book(idx + 1);
+  const page = app.querySelector(`.page[data-id="${CSS.escape(id)}"]`), host = page.querySelector('.stamps');
+  $('#bk').style.overflowX = 'hidden'; $('#bar').classList.add('hidden'); $('#dots').classList.add('hidden');
+  const tray = document.createElement('div'); tray.className = 'tray';
+  tray.innerHTML = `<div class="r" id="hint">Drag stamps to place them. Tap one to change it.</div>
+    <div class="r hidden" id="ctl1">SIZE <input type="range" id="sz" min=".4" max="1.8" step=".02"> TURN <input type="range" id="rt" min="-45" max="45" step="1"></div>
+    <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}</div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
+    <div class="r">PAGE <div class="sw tints">${Object.entries({ cream: '#f3eddc', blue: '#c9dbe8', rose: '#efcfca', tan: '#e9d6ae', mint: '#cfe3d2' }).map(([t, c]) => `<button type="button" data-tint="${t}" style="background:${c}" aria-label="${t} page" aria-pressed="${(e.bg?.tint || 'cream') === t}"></button>`).join('')}</div>
+      ${e.bg?.url ? 'ART <input type="range" id="ay" min="15" max="45" step="1" aria-label="Art height">' : ''}</div>
+    <div class="r" style="justify-content:space-between"><button class="btn small ghost" id="cx" type="button">CANCEL</button><button class="btn small" id="ok" type="button">DONE</button></div>`;
+  app.append(tray);
+  let sel = null;
+  const redraw = async () => { await drawStamps(host, e.stamps, true); host.querySelectorAll('img').forEach(im => { if (sel && im.dataset.k === sel.k) im.classList.add('sel'); bind(im); }); };
+  const select = s => { sel = s; ['ctl1', 'ctl2'].forEach(i => tray.querySelector('#' + i).classList.toggle('hidden', !s)); tray.querySelector('#hint').classList.toggle('hidden', !!s);
+    host.querySelectorAll('img').forEach(im => im.classList.toggle('sel', !!s && im.dataset.k === s.k));
+    if (s) { tray.querySelector('#sz').value = s.s || 1; tray.querySelector('#rt').value = s.r || 0; tray.querySelectorAll('[data-ink]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ink === s.p.ink)); } };
+  const bind = im => { im.onpointerdown = ev => { ev.preventDefault(); const s = e.stamps.find(x => x.k === im.dataset.k); select(s); im.setPointerCapture(ev.pointerId);
+    const r = page.getBoundingClientRect(); const move = mv => { s.x = Math.max(0, Math.min(100, (mv.clientX - r.left) / r.width * 100)); s.y = Math.max(0, Math.min(100, (mv.clientY - r.top) / r.height * 100)); im.style.left = s.x + '%'; im.style.top = s.y + '%'; };
+    im.onpointermove = move; im.onpointerup = () => { im.onpointermove = null; }; }; };
+  await redraw();
+  host.addEventListener('pointerdown', ev => { if (ev.target === host) select(null); });
+  tray.querySelector('#sz').oninput = ev => { if (!sel) return; sel.s = +ev.target.value; const im = host.querySelector(`[data-k="${CSS.escape(sel.k)}"]`); im.style.width = 44 * sel.s + '%'; };
+  tray.querySelector('#rt').oninput = ev => { if (!sel) return; sel.r = +ev.target.value; const im = host.querySelector(`[data-k="${CSS.escape(sel.k)}"]`); im.style.transform = `translate(-50%,-50%) rotate(${sel.r}deg)`; };
+  tray.querySelectorAll('[data-ink]').forEach(b => b.onclick = async () => { if (!sel || sel.p.kind === 'shot') return; sel.p = { ...sel.p, ink: b.dataset.ink }; await redraw(); select(sel); });
+  tray.querySelector('#rm').onclick = async () => { if (!sel) return; e.stamps = e.stamps.filter(x => x !== sel); select(null); await redraw(); };
+  tray.querySelectorAll('[data-tint]').forEach(b => b.onclick = () => { e.bg = { ...(e.bg || {}), tint: b.dataset.tint }; page.className = 'page tint-' + b.dataset.tint; tray.querySelectorAll('[data-tint]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
+  const ay = tray.querySelector('#ay'); if (ay) { const art = page.querySelector('.art'); ay.value = e.bg.y ?? 27; ay.oninput = () => { e.bg.y = +ay.value; art.style.top = ay.value + '%'; }; }
+  tray.querySelector('#cx').onclick = () => go('book', idx + 1);
+  tray.querySelector('#ok').onclick = async ev => { ev.currentTarget.disabled = true; try { await db.saveEntry(e); state.entries = await db.listEntries(); toast('Page saved.'); go('book', state.entries.findIndex(x => x.id === id) + 1); } catch (x) { toast(x.message || 'Could not save.'); ev.currentTarget.disabled = false; } };
+};
+
+start();

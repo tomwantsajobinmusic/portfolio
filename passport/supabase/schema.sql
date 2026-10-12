@@ -119,3 +119,7 @@ create table if not exists public.known_networks (
   last_seen timestamptz default now()
 );
 alter table public.known_networks enable row level security; -- no policies: only the gate-check function reads or writes it
+
+-- 9. Promoter / brand logos (Insomniac, Disco Donnie Presents, Teletech...)
+alter table public.logos drop constraint if exists logos_kind_check;
+alter table public.logos add constraint logos_kind_check check (kind in ('dj', 'festival', 'club', 'venue', 'promoter'));

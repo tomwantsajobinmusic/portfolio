@@ -36,6 +36,15 @@ export async function signIn({ email, password }) {
   if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Email or password is wrong.' : error.message);
   return data.user;
 }
+export async function deleteLogo(id) { if (!LIVE) return; const { error } = await sb.from('logos').delete().eq('id', id); if (error) throw error; }
+export async function scanSite(site) {
+  if (!LIVE) return [];
+  const { data } = await sb.auth.getSession(); if (!data.session) throw new Error('Sign in first.');
+  const r = await fetch(SUPABASE_URL + '/functions/v1/logo-add', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ scan: site }) });
+  const j = await r.json().catch(() => ({})); return j.candidates || [];
+}
+export async function myId() { const u = await currentUser(); return u ? u.id : null; }
+
 /* ---------- beta question: skip it on networks where someone has signed in ---------- */
 async function gateCall(body, token) {
   const r = await fetch(SUPABASE_URL + '/functions/v1/gate-check', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token || SUPABASE_ANON_KEY) }, body: JSON.stringify(body) });
@@ -102,7 +111,7 @@ export async function getPublicBook(username) {
 /* ---------- shared logo directory ---------- */
 export async function listLogos() {
   if (!LIVE) return [];
-  const { data, error } = await sb.from('logos').select('kind,name,key,url').order('created_at', { ascending: false }).limit(2000); if (error) throw error; return data;
+  const { data, error } = await sb.from('logos').select('id,kind,name,key,url,added_by,created_at').order('created_at', { ascending: false }).limit(2000); if (error) throw error; return data;
 }
 export async function addLogo({ name, kind, url, auto }) {
   if (!LIVE) throw new Error('Connect the backend to add logos.');

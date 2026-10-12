@@ -21,7 +21,7 @@ const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { 
 
 /* ---------- shared data ---------- */
 let LOGOS = null, EVENTS = null, DEMO = false, state = { profile: null, entries: [] };
-const CAT = { dj: 'DJs', festival: 'Festivals', club: 'Clubs', venue: 'Venues' };
+const CAT = { dj: 'DJs', festival: 'Festivals', club: 'Clubs', venue: 'Venues', promoter: 'Promoters' };
 const SOCIALS = [['instagram', 'INSTAGRAM', 'https://instagram.com/'], ['tiktok', 'TIKTOK', 'https://www.tiktok.com/@'], ['soundcloud', 'SOUNDCLOUD', 'https://soundcloud.com/'], ['spotify', 'SPOTIFY', ''], ['x', 'X', 'https://x.com/'], ['website', 'WEBSITE', '']];
 const socialURL = (k, v) => { v = String(v || '').trim(); if (/^https?:\/\//i.test(v)) return v; const base = (SOCIALS.find(s => s[0] === k) || [])[2]; return base ? base + v.replace(/^@/, '') : /\./.test(v) ? 'https://' + v : ''; };
 const socialsHTML = p => { const so = p.theme?.socials || {}, list = SOCIALS.filter(([k]) => so[k] && socialURL(k, so[k]));
@@ -36,7 +36,7 @@ const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (
   return L.find(l => l.key === k) || L.find(l => c.length > 3 && coreKey(l.name) === c) || L.find(l => l.key.length > 4 && (k.startsWith(l.key) || (k.length > 6 && l.key.startsWith(k)))) || null; };
 
 /* ---------- router ---------- */
-const routes = { gate, cover, apply, signin, setup, book, editor };
+const routes = { gate, cover, apply, signin, setup, book, editor, logodir };
 async function go(name, arg) { window.scrollTo(0, 0); await routes[name](arg); }
 
 async function start() {
@@ -67,6 +67,7 @@ async function start() {
   if (!user) return go('cover');
   await loadMine();
   if (!state.profile || !state.profile.name) return go('setup');
+  if (q.has('logos')) return go('logodir');
   go('book');
 }
 async function loadMine() { state.profile = await db.getProfile(); state.entries = await db.listEntries(); }
@@ -256,6 +257,7 @@ async function book(openIndex) {
   <span class="dots" id="dots"></span>
   <nav class="bar" id="bar">${DEMO ? '<button class="primary" id="own">Get your own passport</button>' : `
     <button id="prof">Profile</button>
+    <button id="lgs">Logos</button>
     <button class="primary" id="add">+ Add show</button>
     <button id="edit" class="hidden">Edit page</button>`}
   </nav>`;
@@ -276,6 +278,7 @@ async function book(openIndex) {
   bk.style.scrollBehavior = 'auto'; bk.scrollLeft = ((openIndex || 0) + 1) * bk.clientWidth; requestAnimationFrame(() => { bk.scrollLeft = ((openIndex || 0) + 1) * bk.clientWidth; upd(); });
   if (DEMO) { $('#own').onclick = () => { DEMO = false; history.replaceState(null, '', location.pathname); start(); }; if (openIndex == null) toast('Swipe to flip through ' + (state.profile.name ? state.profile.name.split(' ')[0] + '’s' : 'this') + ' passport.', 3000); return; }
   $('#prof').onclick = () => go('setup');
+  if ($('#lgs')) $('#lgs').onclick = () => go('logodir');
   $('#add').onclick = () => go('editor', null);
   $('#edit').onclick = () => { const i = cur(); if (i > 1) go('editor', E[i - 2]); };
   if (!E.length) toast('Tap “+ Add show” to stamp your first page.', 3500);
@@ -394,7 +397,7 @@ async function editor(existing) {
   // page art choices: venue/festival logo, artist logos, upload, none
   let artChoice = e.bg?.url ? { kind: 'keep' } : null;
   const drawArts = () => {
-    const opts = []; const vl = logoFor(e.title, ['Festivals', 'Clubs', 'Venues']) || logoFor(e.venue, ['Clubs', 'Venues', 'Festivals']); if (vl) opts.push({ label: vl.name, src: vl.src });
+    const opts = []; const vl = logoFor(e.title, ['Festivals', 'Promoters', 'Clubs', 'Venues']) || logoFor(e.venue, ['Clubs', 'Venues', 'Festivals']); if (vl) opts.push({ label: vl.name, src: vl.src });
     e.artists.forEach(a => { const lg = logoFor(a, ['DJs']); if (lg && !opts.some(o => o.src === lg.src)) opts.push({ label: lg.name, src: lg.src }); });
     $('#arts').innerHTML = (e.bg?.url ? `<button type="button" data-k="keep" aria-pressed="${artChoice?.kind === 'keep'}"><img src="${esc(e.bg.url)}" alt="Current art"></button>` : '') +
       opts.map((o, i) => `<button type="button" data-o="${i}" aria-pressed="${artChoice?.src === o.src}" title="${esc(o.label)}"><img src="${esc(o.src)}" alt="${esc(o.label)}"></button>`).join('') +
@@ -477,6 +480,96 @@ async function editor(existing) {
       go('customize', saved.id || e.id);
     } catch (x) { console.error(x); err.textContent = x.message || 'Could not save. Try again.'; b.disabled = false; b.textContent = isNew ? 'MAKE THE PAGE' : 'SAVE'; }
   };
+}
+
+/* ---------- 7. logo directory portal: add DJ / club / venue / festival / promoter logos by link ---------- */
+const KIND_LABEL = { dj: 'DJ / ARTIST', club: 'CLUB', venue: 'VENUE', festival: 'FESTIVAL', promoter: 'PROMOTER / BRAND' };
+async function logodir() {
+  const me = await db.myId();
+  let shared = await db.listLogos().catch(() => []), filter = 'all', query = '', candidates = [], previewOK = false, fileBlob = null;
+  const base = await fetch('data/logos/index.json').then(r => r.json()).catch(() => []);
+  const KINDOF = { DJs: 'dj', Clubs: 'club', Venues: 'venue', Festivals: 'festival', Promoters: 'promoter' };
+  const all = () => [...shared.map(l => ({ ...l, mine: l.added_by === me })), ...base.map(l => ({ name: l.name, kind: KINDOF[l.cat] || 'dj', key: keyOf(l.name), url: 'data/' + l.file, builtin: true }))];
+  app.innerHTML = `<section class="screen sheet paper logodir">
+    <button class="back" id="bk">← BOOK</button>
+    <p class="title">LOGO DIRECTORY</p>
+    <p class="hint" style="margin:-6px 0 18px">Every logo here can be engraved as page art or stamped on anyone’s passport. Paste a link to the logo image, check the preview, then add it.</p>
+
+    <div class="section"><h3>ADD A LOGO</h3>
+      <div class="row2">
+        <label class="field"><span>NAME</span><input id="lName" maxlength="60" placeholder="Disco Donnie Presents" autocomplete="off"></label>
+        <label class="field"><span>TYPE</span><select id="lKind">${Object.entries(KIND_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      </div>
+      <div id="dupe"></div>
+      <label class="field"><span>LOGO IMAGE LINK</span><input id="lUrl" inputmode="url" autocapitalize="none" autocorrect="off" placeholder="https://…/logo.png"></label>
+      <p class="hint" style="margin:-8px 0 12px">On a computer: right-click the logo, “Copy image address”. On a phone: press and hold the logo, “Copy”. PNG or SVG with a see-through background works best.</p>
+      <details class="more"><summary>Don’t have the image link? Find it from their website</summary>
+        <div class="row2" style="margin-top:10px"><input id="lSite" class="inp" inputmode="url" autocapitalize="none" placeholder="their website, like discodonnie.com"><button type="button" class="btn small ghost" id="lScan">FIND LOGOS</button></div>
+        <div class="cands" id="cands"></div>
+      </details>
+      <details class="more"><summary>Or upload an image file</summary>
+        <label class="btn small ghost filebtn" style="margin-top:10px">CHOOSE FILE<input type="file" accept="image/*" id="lFile"></label>
+      </details>
+      <div class="lprev hidden" id="prev"><div class="on-light"><img id="pv1" alt=""></div><div class="on-dark"><img id="pv2" alt=""></div></div>
+      <p class="hint" id="lMsg" style="margin:10px 0 0"></p>
+      <button class="btn" id="lAdd" disabled style="margin-top:12px">ADD TO DIRECTORY</button>
+    </div>
+
+    <div class="section"><h3>IN THE DIRECTORY <small id="cnt"></small></h3>
+      <input id="lq" class="inp" placeholder="Search logos" autocomplete="off" style="width:100%;margin-bottom:10px">
+      <div class="chips" id="kf">${['all', ...Object.keys(KIND_LABEL)].map(k => `<button type="button" class="chip" data-k="${k}" aria-pressed="${k === 'all'}">${k === 'all' ? 'ALL' : KIND_LABEL[k].split(' ')[0]}</button>`).join('')}</div>
+      <div class="lgrid" id="grid"></div>
+    </div>
+  </section>`;
+  $('#bk').onclick = () => go('book');
+  const msg = (t, bad) => { const m = $('#lMsg'); m.textContent = t; m.style.color = bad ? '#a3271f' : ''; };
+  const canAdd = () => { $('#lAdd').disabled = !(previewOK && $('#lName').value.trim()); };
+
+  // preview: the logo shows on light and dark paper so a wrong or invisible image is obvious before it's saved
+  const preview = src => { previewOK = false; canAdd();
+    if (!src) { $('#prev').classList.add('hidden'); msg(''); return; }
+    $('#prev').classList.remove('hidden'); msg('Loading preview…');
+    const ok = () => { previewOK = true; msg('Is this the right logo? If yes, add it.'); canAdd(); };
+    const bad = () => { $('#prev').classList.add('hidden'); msg('That link didn’t load as an image. Make sure it’s the image address, not the page address.', true); };
+    $('#pv1').onload = ok; $('#pv1').onerror = bad; $('#pv1').src = src; $('#pv2').src = src; };
+  let t = 0;
+  $('#lUrl').oninput = () => { fileBlob = null; clearTimeout(t); t = setTimeout(() => preview($('#lUrl').value.trim()), 350); };
+  $('#lFile').onchange = ev => { const f = ev.target.files[0]; if (!f) return; if (f.size > 4e6) return msg('That file is over 4 MB.', true); fileBlob = f; $('#lUrl').value = ''; preview(URL.createObjectURL(f)); };
+  const dupe = () => { const k = keyOf($('#lName').value), kind = $('#lKind').value; const hit = k && all().find(l => l.key === k && l.kind === kind);
+    $('#dupe').innerHTML = hit ? `<div class="dupe"><img src="${esc(hit.url)}" alt=""><span>${esc(hit.name)} already has a logo${hit.mine ? '. Adding this one replaces yours.' : '. Add yours only if that one is wrong or outdated.'}</span></div>` : ''; };
+  $('#lName').oninput = () => { dupe(); canAdd(); }; $('#lKind').onchange = dupe;
+
+  $('#lScan').onclick = async ev => { let s = $('#lSite').value.trim(); if (!s) return; if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+    const b = ev.currentTarget; b.disabled = true; $('#cands').innerHTML = '<p class="hint">Looking…</p>';
+    try { candidates = await db.scanSite(s); } catch (x) { candidates = []; }
+    b.disabled = false;
+    $('#cands').innerHTML = candidates.length ? candidates.map((c, i) => `<button type="button" data-c="${i}"><img src="${esc(c)}" alt="" onerror="this.parentNode.remove()"></button>`).join('') + '<p class="hint" style="grid-column:1/-1;margin:4px 0 0">Tap the real logo. Sites often include sponsor logos too.</p>' : '<p class="hint">Couldn’t find logos on that site. Copy the image link from the page instead.</p>';
+    $$('#cands [data-c]').forEach(btn => btn.onclick = () => { $$('#cands [data-c]').forEach(x => x.setAttribute('aria-pressed', 'false')); btn.setAttribute('aria-pressed', 'true'); fileBlob = null; $('#lUrl').value = candidates[+btn.dataset.c]; preview(candidates[+btn.dataset.c]); }); };
+
+  $('#lAdd').onclick = async ev => {
+    const name = $('#lName').value.trim(), kind = $('#lKind').value, b = ev.currentTarget; if (!name || !previewOK) return;
+    b.disabled = true; b.textContent = 'ADDING…'; msg('');
+    try {
+      const k = keyOf(name), old = shared.filter(l => l.key === k && l.kind === kind && l.added_by === me);
+      const url = fileBlob ? await db.uploadImage(fileBlob, 'logo-src') : $('#lUrl').value.trim();
+      await db.addLogo({ name, kind, url });
+      for (const o of old) await db.deleteLogo(o.id).catch(() => {});
+      toast(name + ' added. Thanks!');
+      shared = await db.listLogos().catch(() => shared); await logos(true);
+      $('#lName').value = ''; $('#lUrl').value = ''; $('#lSite').value = ''; $('#cands').innerHTML = ''; fileBlob = null; $('#dupe').innerHTML = ''; preview(''); drawGrid();
+    } catch (x) { msg(x.message || 'Could not add that logo.', true); }
+    b.textContent = 'ADD TO DIRECTORY'; canAdd();
+  };
+
+  const drawGrid = () => {
+    const q = keyOf(query), list = all().filter(l => (filter === 'all' || l.kind === filter) && (!q || l.key.includes(q))).sort((a, b) => a.name.localeCompare(b.name));
+    $('#cnt').textContent = list.length;
+    $('#grid').innerHTML = list.map(l => `<figure><div><img src="${esc(l.url)}" alt="" loading="lazy"></div><figcaption>${esc(l.name)}<small>${esc(KIND_LABEL[l.kind] || '')}</small></figcaption>${l.mine ? `<button type="button" class="rm" data-id="${esc(l.id)}" aria-label="Remove ${esc(l.name)}">×</button>` : ''}</figure>`).join('') || '<p class="hint">Nothing yet. Add the first one above.</p>';
+    $$('#grid .rm').forEach(b => b.onclick = async () => { if (!confirm('Remove this logo from the directory?')) return; try { await db.deleteLogo(b.dataset.id); shared = shared.filter(l => l.id !== b.dataset.id); await logos(true); drawGrid(); } catch (x) { toast(x.message); } });
+  };
+  $('#lq').oninput = ev => { query = ev.target.value; drawGrid(); };
+  $$('#kf [data-k]').forEach(b => b.onclick = () => { filter = b.dataset.k; $$('#kf [data-k]').forEach(x => x.setAttribute('aria-pressed', x === b)); drawGrid(); });
+  drawGrid();
 }
 
 /* ---------- 6. customize: drag stamps, size, turn, ink, page tint ---------- */

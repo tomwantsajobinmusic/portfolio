@@ -13,7 +13,7 @@ const cors = {
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const keyOf = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const UA = { 'User-Agent': 'RavePassportBeta/1.0 (thomasbrownworks.com/passport)', 'Api-User-Agent': 'RavePassportBeta/1.0 (thomasbrownworks.com/passport)' };
-const KINDS = ['dj', 'festival', 'club', 'venue'];
+const KINDS = ['dj', 'festival', 'club', 'venue', 'promoter'];
 const OK_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/gif': 'gif' };
 
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);

@@ -311,7 +311,7 @@ async function editor(existing) {
     <div class="section"><h3>1. FIND THE SHOW</h3>
       <label class="field"><span>SEARCH FESTIVALS, ARTISTS, VENUES, CITIES</span><input id="q" placeholder="ACL, Fisher, Concourse, Austin…" autocomplete="off"></label>
       <div class="results" id="res" role="listbox" aria-label="Shows"></div>
-      <p class="hint" style="margin-top:8px">Shows from <a href="https://www.setlist.fm" target="_blank" rel="noopener">setlist.fm</a> and <a href="https://www.bandsintown.com" target="_blank" rel="noopener">Bandsintown</a>, upcoming from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a>. Search the artist and venue, like “mau p pacha”. Not there? Fill it in below.</p>
+      <p class="hint" style="margin-top:8px">Shows from <a href="https://ra.co" target="_blank" rel="noopener">Resident Advisor</a> and <a href="https://www.setlist.fm" target="_blank" rel="noopener">setlist.fm</a>, upcoming from <a href="https://edmtrain.com" target="_blank" rel="noopener">Edmtrain</a>. Search the artist and venue, like “mau p pacha”. Not there? Fill it in below.</p>
     </div>
 
     <div class="section"><h3>2. THE DETAILS</h3>
@@ -382,7 +382,8 @@ async function editor(existing) {
     timer = setTimeout(async () => { ctrl = new AbortController(); pastBusy = true; showResults();
       try { past = await db.searchPast(q, ctrl.signal); pastQ = q; } catch (x) { if (x.name !== 'AbortError') { past = []; pastQ = q; } } pastBusy = false; showResults(); }, 450); };
   const pick = async x => { picked = x;
-    e.event_id = x.src ? null : x.id; e.title = x.t || x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : isNew ? [] : e.artists;
+    e.event_id = x.src ? null : x.id; e.title = x.t || x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); const qk = keyOf($('#q').value), asked = x.a.filter(a => { const k = keyOf(a); return k.length > 2 && qk.includes(k); });
+    e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : [...new Set([...(isNew ? [] : e.artists), ...asked])];
     $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
     if (x.src === 'festival') { e.day = x.day || null; $('#dayOn').checked = !!x.day; if (x.day) $('#day').value = x.day; }
     syncDay();
@@ -406,14 +407,16 @@ async function editor(existing) {
     const D = await events(), words = q.split(/\s+/);
     const up = D.events.filter(x => words.every(w => x._s.includes(w))).sort((a, b) => (b.n.toLowerCase().includes(q) - a.n.toLowerCase().includes(q)) || (a.d < b.d ? -1 : 1)).slice(0, 25);
     const old = pastQ === q ? past.slice().sort((a, b) => (a.d < b.d ? 1 : -1)) : [];
-    const fr = festQ === q ? fest : [];
+    const fr = (festQ === q ? fest : []).map(x => { if (x.a.length || !past.length) return x;
+      const hit = past.find(p => p.a.length > 4 && p.d <= x.d && p.d >= x.d.slice(0, 8) + '01' && coreKey(p.n + ' ' + p.v).includes(coreKey(x.t).slice(0, 6)));
+      return hit ? { ...x, a: hit.a.slice() } : x; });
     const rows = [...fr, ...old, ...up];
     const item = (x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n || (x.src ? x.a.join(', ') + ' at ' + x.v : x.a.slice(0, 3).join(', ')))}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)}${x.src ? '' : ' · ' + x.a.length + ' artists'}</small></button>`;
     const head = t => `<p class="hint" style="padding:6px 12px;margin:0;font:600 10px var(--mono);letter-spacing:.12em;background:rgba(10,49,97,.06)">${t}</p>`;
     res.style.display = '';
     const fitem = (x, i) => `<button type="button" data-i="${i}" aria-pressed="${picked === x}"><b>${esc(x.n)}</b><small>${esc(x.d)} · ${esc(x.v)} · ${esc(x.l)} · ${x.a.length ? x.a.length + ' artists' : 'lineup not logged yet, add the sets you saw'}</small></button>`;
     res.innerHTML = (fr.length ? head('FESTIVALS') + fr.map((x, i) => fitem(x, i)).join('') : festBusy ? head('LOOKING UP FESTIVAL DAYS…') : '') +
-      (old.length ? head('SHOWS · SETLIST.FM + BANDSINTOWN') + old.map((x, i) => item(x, fr.length + i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
+      (old.length ? head('SHOWS · RESIDENT ADVISOR + SETLIST.FM') + old.map((x, i) => item(x, fr.length + i)).join('') : pastBusy ? head('SEARCHING PAST SHOWS…') : '') +
       (up.length ? head('TODAY AND UPCOMING · EDMTRAIN') + up.map((x, i) => item(x, fr.length + old.length + i)).join('') : '') +
       (!fr.length && !festBusy && !old.length && !up.length && !pastBusy ? '<p class="hint" style="padding:10px">No matches. Try the artist and the venue, like “mau p pacha”, or fill it in below.</p>' : '');
     $$('#res button').forEach(b => b.onclick = () => pick(rows[+b.dataset.i]));

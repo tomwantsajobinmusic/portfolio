@@ -93,7 +93,7 @@ export async function uploadImage(blob, kind) {
 /* ---------- past shows (setlist.fm via the show-search edge function) ---------- */
 async function callSearch(params, signal) {
   if (!LIVE) return null;
-  const url = new URL(SUPABASE_URL + '/functions/v1/show-search'); Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const url = new URL(SUPABASE_URL + '/functions/v1/shows'); Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const r = await fetch(url, { signal, headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } });
   if (!r.ok) throw new Error('search ' + r.status); return r.json();
 }

@@ -132,3 +132,7 @@ create policy "see own admin row" on public.app_admins for select to authenticat
 insert into public.app_admins (user_id) select id from public.profiles where username = 'thomasbrown' on conflict do nothing;
 drop policy if exists "admins remove any logo" on public.logos;
 create policy "admins remove any logo" on public.logos for delete to authenticated using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));
+
+-- 11. Search cache for the shows function (RA + setlist.fm), 12-hour reuse. Only the function touches it.
+create table if not exists public.search_cache (key text primary key, data jsonb not null, at timestamptz default now());
+alter table public.search_cache enable row level security;

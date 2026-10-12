@@ -58,7 +58,7 @@ button{cursor:pointer}
 .page.tint-blue::before{background:#c9dbe8}.page.tint-rose{}.page.tint-rose::before{background:#efcfca}.page.tint-tan::before{background:#e9d6ae}.page.tint-mint::before{background:#cfe3d2}
 .page .tintwash{position:absolute;inset:0;mix-blend-mode:multiply;pointer-events:none}
 .num{position:absolute;top:max(14px,env(safe-area-inset-top));left:18px;font:500 30px/1 var(--mono);letter-spacing:.02em;z-index:3}
-.art{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);width:86%;max-height:52%;object-fit:contain;pointer-events:none}
+.art{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);width:86%;max-height:52%;object-fit:contain;pointer-events:none;opacity:.42;mix-blend-mode:multiply}
 .stamps{position:absolute;inset:0;z-index:2}
 .stamps img{position:absolute;width:44%;transform-origin:center;mix-blend-mode:multiply;user-select:none;-webkit-user-drag:none;pointer-events:none}
 .stamps.editing img{pointer-events:auto;touch-action:none}

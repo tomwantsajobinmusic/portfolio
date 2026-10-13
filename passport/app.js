@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791867042';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791867042';
+import * as db from './store.js?v=1791870033';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791870033';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

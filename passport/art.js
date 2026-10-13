@@ -103,8 +103,8 @@ function arcText(x, S, text, r, top, size) {
 }
 function fit(x, text, maxW, size, family) { let s = size; x.font = '700 ' + s + 'px ' + family; while (s > 14 && x.measureText(text).width > maxW) { s -= 2; x.font = '700 ' + s + 'px ' + family; } return s; }
 // Logo pixels become ink: transparent or light backgrounds drop out.
-function inkFrom(img, maxSide, ink) {
-  const s = maxSide / Math.max(img.width, img.height), w = Math.max(1, Math.round(img.width * s)), h = Math.max(1, Math.round(img.height * s));
+function inkFrom(img, maxSide, ink, maxW = maxSide) {
+  const s = Math.min(maxW / img.width, maxSide / img.height), w = Math.max(1, Math.round(img.width * s)), h = Math.max(1, Math.round(img.height * s));
   const c = canvas(w, h), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
   const id = x.getImageData(0, 0, w, h), d = id.data; let clear = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 30) clear++;
   const useAlpha = clear > d.length / 4 * .12;
@@ -125,8 +125,9 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
   const S = 600, c = canvas(S, S), x = c.getContext('2d', { willReadFrequently: true });
   x.fillStyle = ink; x.strokeStyle = ink; x.lineJoin = 'round';
   const mono = '"IBM Plex Mono", Consolas, monospace', cond = 'Oswald, "Arial Narrow", sans-serif';
-  const putLogo = (side, cy, cx = S / 2) => { if (!logo) return; const ic = inkFrom(logo, side, ink); x.drawImage(ic, cx - ic.width / 2, cy - ic.height / 2); };
-  if (shape === 'logo') putLogo(S * .9, S / 2);
+  // logos fit a box `side` tall and up to `wide`× as wide, so long wordmarks stay big
+  const putLogo = (side, cy, cx = S / 2, wide = 1.5) => { if (!logo) return; const ic = inkFrom(logo, side, ink, side * wide); x.drawImage(ic, cx - ic.width / 2, cy - ic.height / 2); };
+  if (shape === 'logo') putLogo(S * .94, S / 2, S / 2, 1);
   else if (shape === 'circle') {
     x.lineWidth = 16; x.beginPath(); x.arc(S / 2, S / 2, 280, 0, 7); x.stroke();
     x.lineWidth = 5; x.beginPath(); x.arc(S / 2, S / 2, 258, 0, 7); x.stroke();
@@ -146,9 +147,9 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
       x.closePath(); };
     x.lineWidth = 14; path(0); x.stroke(); x.lineWidth = 4; path(20); x.stroke();
     x.textAlign = 'center'; x.textBaseline = 'middle';
-    const tall = shape === 'hex' ? 230 : shape === 'oval' ? 175 : 150, wide = shape === 'hex' ? 380 : 430;
+    const tall = shape === 'hex' ? 190 : shape === 'oval' ? 175 : 150, wide = shape === 'hex' ? 300 : 430;
     if (top) { const fs = fit(x, top, wide, 44, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, S / 2, S / 2 - tall * .62); }
-    putLogo(date || bottom ? (shape === 'ticket' ? 120 : 160) : 230, S / 2 - (top && (date || bottom) ? 4 : 0));
+    putLogo(date || bottom ? (shape === 'ticket' ? 110 : 130) : 210, S / 2, S / 2, shape === 'hex' ? 2.2 : 3.2);
     const low = [date, bottom].filter(Boolean).join('  ·  ');
     if (low) { const fs = fit(x, low, wide, 30, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(low, S / 2, S / 2 + tall * .62); }
   } else {
@@ -158,8 +159,8 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
     if (top) { const fs = fit(x, top, 470, 50, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, S / 2, y0 + 62); }
     x.lineWidth = 4; x.beginPath(); x.moveTo(70, y0 + 98); x.lineTo(S - 70, y0 + 98); x.moveTo(70, y1 - 76); x.lineTo(S - 70, y1 - 76); x.stroke();
     const mid = (y0 + 98 + y1 - 76) / 2;
-    if (!date && !small) putLogo(150, mid);
-    else { putLogo(118, mid, 150);
+    if (!date && !small) putLogo(150, mid, S / 2, 3);
+    else { putLogo(118, mid, 150, 1.7);
       if (small) { const fs = fit(x, small, 280, 22, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(small, 380, mid - 26); }
       if (date) { const fs = fit(x, date, 290, 36, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(date, 380, mid + 18); } }
     if (bottom) { const fs = fit(x, bottom, 470, 28, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(bottom, S / 2, y1 - 42); }

@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791845613';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791845613';
+import * as db from './store.js?v=1791855220';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791855220';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -503,7 +503,7 @@ async function editor(existing) {
   const autoStamps = () => {
     const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
     const vl = e.kind === 'festival' ? logoFor(e.title, ['Festivals']) || logoFor(e.venue, ['Clubs', 'Venues']) : logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Festivals', 'Clubs', 'Venues']);
-    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
+    if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: e.kind !== 'festival' && vl ? 'logo' : 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
@@ -667,6 +667,7 @@ routes.customize = async function customize(id) {
   const tray = document.createElement('div'); tray.className = 'tray';
   tray.innerHTML = `<div class="r" id="hint">Drag stamps to place them. Tap one to change it.</div>
     <div class="r hidden" id="ctl1">SIZE <input type="range" id="sz" min=".4" max="1.8" step=".02"> TURN <input type="range" id="rt" min="-45" max="45" step="1"></div>
+    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
     <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}</div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
     <div class="r">PAGE <div class="sw tints">${Object.entries({ cream: '#f3eddc', blue: '#c9dbe8', rose: '#efcfca', tan: '#e9d6ae', mint: '#cfe3d2' }).map(([t, c]) => `<button type="button" data-tint="${t}" style="background:${c}" aria-label="${t} page" aria-pressed="${(e.bg?.tint || 'cream') === t}"></button>`).join('')}</div>
       ${e.bg?.url ? 'ART <input type="range" id="ay" min="15" max="45" step="1" aria-label="Art height">' : ''}</div>
@@ -674,7 +675,10 @@ routes.customize = async function customize(id) {
   app.append(tray);
   let sel = null;
   const redraw = async () => { await drawStamps(host, e.stamps, true); host.querySelectorAll('img').forEach(im => { if (sel && im.dataset.k === sel.k) im.classList.add('sel'); bind(im); }); };
-  const select = s => { sel = s; ['ctl1', 'ctl2'].forEach(i => tray.querySelector('#' + i).classList.toggle('hidden', !s)); tray.querySelector('#hint').classList.toggle('hidden', !!s);
+  const shapeable = s => s && !s.p.img && s.p.kind !== 'shot';
+  const select = s => { sel = s; ['ctl1', 'ctl2'].forEach(i => tray.querySelector('#' + i).classList.toggle('hidden', !s));
+    tray.querySelector('#ctl3').classList.toggle('hidden', !shapeable(s));
+    if (shapeable(s)) tray.querySelectorAll('[data-shape]').forEach(b => { b.setAttribute('aria-pressed', (s.p.shape || 'circle') === b.dataset.shape); b.disabled = b.dataset.shape === 'logo' && !s.p.logo; }); tray.querySelector('#hint').classList.toggle('hidden', !!s);
     host.querySelectorAll('img').forEach(im => im.classList.toggle('sel', !!s && im.dataset.k === s.k));
     if (s) { tray.querySelector('#sz').value = s.s || 1; tray.querySelector('#rt').value = s.r || 0; tray.querySelectorAll('[data-ink]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ink === s.p.ink)); } };
   const bind = im => { im.onpointerdown = ev => { ev.preventDefault(); const s = e.stamps.find(x => x.k === im.dataset.k); select(s); im.setPointerCapture(ev.pointerId);
@@ -685,6 +689,11 @@ routes.customize = async function customize(id) {
   tray.querySelector('#sz').oninput = ev => { if (!sel) return; sel.s = +ev.target.value; const im = host.querySelector(`[data-k="${CSS.escape(sel.k)}"]`); im.style.width = 44 * sel.s + '%'; };
   tray.querySelector('#rt').oninput = ev => { if (!sel) return; sel.r = +ev.target.value; const im = host.querySelector(`[data-k="${CSS.escape(sel.k)}"]`); im.style.transform = `translate(-50%,-50%) rotate(${sel.r}deg)`; };
   tray.querySelectorAll('[data-ink]').forEach(b => b.onclick = async () => { if (!sel || sel.p.kind === 'shot') return; sel.p = { ...sel.p, ink: b.dataset.ink }; await redraw(); select(sel); });
+  // switching shape: fill in the wording a framed stamp needs (name, date, city) from the page
+  tray.querySelectorAll('[data-shape]').forEach(b => b.onclick = async () => { if (!shapeable(sel)) return;
+    const name = sel.k === 'venue' ? (e.kind === 'festival' ? e.title : e.venue || e.title) : String(sel.k).replace(/^a:/, '');
+    sel.p = { ...sel.p, shape: b.dataset.shape, top: sel.p.top || String(name || '').toUpperCase(), date: sel.p.date || stampDate(e.date), bottom: sel.p.bottom || cityUpper((e.city || '').split(',')[0]) };
+    await redraw(); select(sel); });
   tray.querySelector('#rm').onclick = async () => { if (!sel) return; e.stamps = e.stamps.filter(x => x !== sel); select(null); await redraw(); };
   tray.querySelectorAll('[data-tint]').forEach(b => b.onclick = () => { e.bg = { ...(e.bg || {}), tint: b.dataset.tint }; page.className = 'page tint-' + b.dataset.tint; tray.querySelectorAll('[data-tint]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
   const ay = tray.querySelector('#ay'); if (ay) { const art = page.querySelector('.art'); ay.value = e.bg.y ?? 27; ay.oninput = () => { e.bg.y = +ay.value; art.style.top = ay.value + '%'; }; }

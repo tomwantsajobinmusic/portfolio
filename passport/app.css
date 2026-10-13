@@ -163,3 +163,7 @@ button{cursor:pointer}
 .lgrid figure:hover .acts,.lgrid figure:focus-within .acts{opacity:1;pointer-events:auto}
 .lgrid .acts .sw{border:0;background:#fff;color:var(--navy);border-radius:999px;padding:6px 14px;font:700 10px var(--sans);letter-spacing:.14em;box-shadow:0 1px 4px rgba(0,0,0,.25)}
 .lgrid .acts .rm{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:0;background:#fff;color:var(--navy);font:600 14px/1 var(--sans)}
+.tray .shapes{display:flex;flex-wrap:wrap;gap:6px}
+.tray .shapes .chip{padding:5px 10px;font-size:12px}
+.tray .shapes .chip[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tray .shapes .chip:disabled{opacity:.35}

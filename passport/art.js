@@ -120,7 +120,7 @@ function inkFrom(img, maxSide, ink) {
   }
   x.putImageData(id, 0, 0); return c;
 }
-/** shape: 'circle' | 'rect' | 'logo'. Returns a 600px transparent canvas. */
+/** shape: 'logo' | 'circle' | 'rect' | 'oval' | 'hex' | 'ticket'. Returns a 600px transparent canvas. */
 export function stamp({ shape = 'circle', top = '', bottom = '', date = '', small = '', logo = null, ink = INKS.navy, seed = 7, wear = .35 } = {}) {
   const S = 600, c = canvas(S, S), x = c.getContext('2d', { willReadFrequently: true });
   x.fillStyle = ink; x.strokeStyle = ink; x.lineJoin = 'round';
@@ -137,6 +137,20 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
     else { putLogo(170, S / 2 - 40);
       if (date) { const fs = fit(x, date, 250, 34, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(date, S / 2, S / 2 + 82); }
       if (small) { const fs = fit(x, small, 200, 22, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(small, S / 2, S / 2 - 140); } }
+  } else if (shape === 'oval' || shape === 'hex' || shape === 'ticket') {
+    const path = (inset) => { x.beginPath();
+      if (shape === 'oval') x.ellipse(S / 2, S / 2, 285 - inset, 205 - inset, 0, 0, 7);
+      else if (shape === 'hex') for (let i = 0; i <= 6; i++) { const a = Math.PI / 3 * i, R = 288 - inset; const px = S / 2 + R * Math.cos(a), py = S / 2 + R * Math.sin(a) * .86; i ? x.lineTo(px, py) : x.moveTo(px, py); }
+      else { const X = 24 + inset, Y = 140 + inset, W = S - 48 - inset * 2, H = 320 - inset * 2, n = 34 - inset * .4;
+        x.moveTo(X, Y); x.lineTo(X + W, Y); x.lineTo(X + W, S / 2 - n); x.arc(X + W, S / 2, n, -Math.PI / 2, Math.PI / 2, true); x.lineTo(X + W, Y + H); x.lineTo(X, Y + H); x.lineTo(X, S / 2 + n); x.arc(X, S / 2, n, Math.PI / 2, -Math.PI / 2, true); }
+      x.closePath(); };
+    x.lineWidth = 14; path(0); x.stroke(); x.lineWidth = 4; path(20); x.stroke();
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    const tall = shape === 'hex' ? 230 : shape === 'oval' ? 175 : 150, wide = shape === 'hex' ? 380 : 430;
+    if (top) { const fs = fit(x, top, wide, 44, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, S / 2, S / 2 - tall * .62); }
+    putLogo(date || bottom ? (shape === 'ticket' ? 120 : 160) : 230, S / 2 - (top && (date || bottom) ? 4 : 0));
+    const low = [date, bottom].filter(Boolean).join('  ·  ');
+    if (low) { const fs = fit(x, low, wide, 30, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(low, S / 2, S / 2 + tall * .62); }
   } else {
     const y0 = 130, y1 = 470; x.lineWidth = 14; roundRect(x, 30, y0, S - 60, y1 - y0, 22); x.stroke();
     x.lineWidth = 4; roundRect(x, 48, y0 + 18, S - 96, y1 - y0 - 36, 14); x.stroke();

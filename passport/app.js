@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791855532';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791855532';
+import * as db from './store.js?v=1791855825';
+import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791855825';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -48,7 +48,8 @@ const ALT_TAIL = /^(alt|alternate|alternative|secondary|v?\d+|wordmark|icon|mark
 const logosFor = (name, cats) => {
   const main = logoFor(name, cats); if (!main) return [];
   const bases = [...new Set([main.key, keyOf(name), coreKey(name)])].filter(b => b && b.length > 2);
-  const alts = (LOGOS || []).filter(l => l !== main && (!cats || cats.includes(l.cat)) && bases.some(b => l.key.startsWith(b) && ALT_TAIL.test(l.key.slice(b.length))));
+  const core = coreKey(main.name);
+  const alts = (LOGOS || []).filter(l => l !== main && (!cats || cats.includes(l.cat)) && ((core.length > 3 && coreKey(l.name) === core) || bases.some(b => l.key.startsWith(b) && ALT_TAIL.test(l.key.slice(b.length)))));
   return [main, ...alts.filter((l, i, a) => a.findIndex(x => x.src === l.src) === i)];
 };
 

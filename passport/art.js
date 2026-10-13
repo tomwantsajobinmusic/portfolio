@@ -136,9 +136,12 @@ function inkFrom(img, maxSide, ink, maxW = maxSide) {
   const corner = [0, (w - 1) * 4, (h - 1) * w * 4, ((h - 1) * w + w - 1) * 4].map(i => [d[i], d[i + 1], d[i + 2]]);
   const bg = corner.reduce((a, b) => [a[0] + b[0] / 4, a[1] + b[1] / 4, a[2] + b[2] / 4], [0, 0, 0]);
   const rgb = [1, 3, 5].map(i => parseInt(ink.slice(i, i + 2), 16));
+  // white parts of a see-through logo are normally holes, but if the logo is mostly white (white wordmarks), white is the ink
+  let solid = 0, white = 0; if (useAlpha) for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) { solid++; if (.299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2] > 237) white++; }
+  const whiteIsInk = useAlpha && solid && white / solid > .6;
   for (let i = 0; i < d.length; i += 4) {
     let a;
-    if (useAlpha) { const l = (.299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2]) / 255; a = d[i + 3] / 255 * (l > .93 ? 0 : 1); }
+    if (useAlpha) { const l = (.299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2]) / 255; a = d[i + 3] / 255 * (l > .93 && !whiteIsInk ? 0 : 1); }
     else { const dist = Math.hypot(d[i] - bg[0], d[i + 1] - bg[1], d[i + 2] - bg[2]) / 255; a = Math.min(1, Math.max(0, (dist - .18) * 3)); }
     d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = a * 255;
   }

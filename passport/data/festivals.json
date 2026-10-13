@@ -1,0 +1,633 @@
+{
+ "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet. lineups = full poster lineup per year, used when setlist.fm has no sets logged. promoters = co-promoters / stage hosts per year, offered as stamps.",
+ "festivals": [
+  {
+   "name": "Portola",
+   "aliases": [
+    "portola festival",
+    "portola music festival"
+   ],
+   "venue": "Pier 80",
+   "cityQ": "San Francisco",
+   "city": "San Francisco, CA",
+   "from": "09-15",
+   "to": "10-10",
+   "dates": {
+    "2026": [
+     "2026-09-26",
+     "2026-09-27"
+    ]
+   }
+  },
+  {
+   "name": "Austin City Limits",
+   "aliases": [
+    "acl",
+    "acl fest",
+    "austin city limits music festival"
+   ],
+   "venue": "Zilker Park",
+   "cityQ": "Austin",
+   "city": "Austin, TX",
+   "from": "09-28",
+   "to": "10-20",
+   "dates": {}
+  },
+  {
+   "name": "Electric Daisy Carnival",
+   "aliases": [
+    "edc",
+    "edc las vegas",
+    "edc vegas"
+   ],
+   "venue": "Las Vegas Motor Speedway",
+   "cityQ": "Las Vegas",
+   "city": "Las Vegas, NV",
+   "from": "05-10",
+   "to": "05-31",
+   "dates": {}
+  },
+  {
+   "name": "Ultra Music Festival",
+   "aliases": [
+    "ultra",
+    "ultra miami"
+   ],
+   "venue": "Bayfront Park",
+   "cityQ": "Miami",
+   "city": "Miami, FL",
+   "from": "03-20",
+   "to": "04-02",
+   "dates": {}
+  },
+  {
+   "name": "Coachella",
+   "aliases": [
+    "coachella valley music and arts festival"
+   ],
+   "venue": "Empire Polo Club",
+   "cityQ": "Indio",
+   "city": "Indio, CA",
+   "from": "04-08",
+   "to": "04-30",
+   "dates": {}
+  },
+  {
+   "name": "Lollapalooza",
+   "aliases": [
+    "lolla",
+    "lollapalooza chicago"
+   ],
+   "venue": "Grant Park",
+   "cityQ": "Chicago",
+   "city": "Chicago, IL",
+   "from": "07-28",
+   "to": "08-08",
+   "dates": {}
+  },
+  {
+   "name": "Movement",
+   "aliases": [
+    "movement detroit",
+    "movement festival"
+   ],
+   "venue": "Hart Plaza",
+   "cityQ": "Detroit",
+   "city": "Detroit, MI",
+   "from": "05-22",
+   "to": "06-02",
+   "dates": {}
+  },
+  {
+   "name": "Electric Forest",
+   "aliases": [
+    "forest"
+   ],
+   "venue": "Double JJ Resort",
+   "cityQ": "Rothbury",
+   "city": "Rothbury, MI",
+   "from": "06-15",
+   "to": "07-05",
+   "dates": {}
+  },
+  {
+   "name": "Lost Lands",
+   "aliases": [
+    "lost lands festival"
+   ],
+   "venue": "Legend Valley",
+   "cityQ": "Thornville",
+   "city": "Thornville, OH",
+   "from": "09-12",
+   "to": "09-28",
+   "dates": {}
+  },
+  {
+   "name": "Bass Canyon",
+   "aliases": [],
+   "venue": "Gorge Amphitheatre",
+   "cityQ": "George",
+   "city": "George, WA",
+   "from": "08-10",
+   "to": "08-22",
+   "dates": {}
+  },
+  {
+   "name": "CRSSD",
+   "aliases": [
+    "crssd fest",
+    "crssd festival"
+   ],
+   "venue": "Waterfront Park",
+   "cityQ": "San Diego",
+   "city": "San Diego, CA",
+   "from": "02-25",
+   "to": "03-12",
+   "dates": {}
+  },
+  {
+   "name": "CRSSD Fall",
+   "aliases": [
+    "crssd fall"
+   ],
+   "venue": "Waterfront Park",
+   "cityQ": "San Diego",
+   "city": "San Diego, CA",
+   "from": "09-20",
+   "to": "10-06",
+   "dates": {}
+  },
+  {
+   "name": "Hulaween",
+   "aliases": [
+    "suwannee hulaween"
+   ],
+   "venue": "Spirit of the Suwannee Music Park",
+   "cityQ": "Live Oak",
+   "city": "Live Oak, FL",
+   "from": "10-25",
+   "to": "11-05",
+   "dates": {}
+  },
+  {
+   "name": "Beyond Wonderland",
+   "aliases": [
+    "beyond"
+   ],
+   "venue": "NOS Events Center",
+   "cityQ": "San Bernardino",
+   "city": "San Bernardino, CA",
+   "from": "03-15",
+   "to": "04-10",
+   "dates": {}
+  },
+  {
+   "name": "HARD Summer",
+   "aliases": [
+    "hard",
+    "hard summer music festival"
+   ],
+   "venue": "Hollywood Park",
+   "cityQ": "Inglewood",
+   "city": "Inglewood, CA",
+   "from": "07-25",
+   "to": "08-10",
+   "dates": {}
+  },
+  {
+   "name": "North Coast",
+   "aliases": [
+    "north coast music festival",
+    "ncmf"
+   ],
+   "venue": "SeatGeek Stadium",
+   "cityQ": "Bridgeview",
+   "city": "Bridgeview, IL",
+   "from": "08-25",
+   "to": "09-10",
+   "dates": {}
+  },
+  {
+   "name": "Bonnaroo",
+   "aliases": [],
+   "venue": "Great Stage Park",
+   "cityQ": "Manchester",
+   "city": "Manchester, TN",
+   "from": "06-08",
+   "to": "06-20",
+   "dates": {}
+  },
+  {
+   "name": "Tomorrowland",
+   "aliases": [],
+   "venue": "De Schorre",
+   "cityQ": "Boom",
+   "city": "Boom, Belgium",
+   "from": "07-15",
+   "to": "08-05",
+   "dates": {}
+  },
+  {
+   "name": "EXIT",
+   "aliases": [
+    "exit festival"
+   ],
+   "venue": "Petrovaradin Fortress",
+   "cityQ": "Novi Sad",
+   "city": "Novi Sad, Serbia",
+   "from": "07-05",
+   "to": "07-20",
+   "dates": {}
+  },
+  {
+   "name": "Lowlands",
+   "aliases": [],
+   "venue": "Evenemententerrein Walibi Holland",
+   "cityQ": "Biddinghuizen",
+   "city": "Biddinghuizen, Netherlands",
+   "from": "08-10",
+   "to": "08-25",
+   "dates": {}
+  },
+  {
+   "name": "Mysteryland",
+   "aliases": [],
+   "venue": "Haarlemmermeerse Bos",
+   "cityQ": "Hoofddorp",
+   "city": "Hoofddorp, Netherlands",
+   "from": "08-20",
+   "to": "09-05",
+   "dates": {}
+  },
+  {
+   "name": "Sónar",
+   "aliases": [
+    "sonar",
+    "sonar barcelona"
+   ],
+   "venue": "Fira Gran Via",
+   "cityQ": "L'Hospitalet de Llobregat",
+   "city": "Barcelona, Spain",
+   "from": "06-10",
+   "to": "06-25",
+   "dates": {}
+  },
+  {
+   "name": "Glastonbury",
+   "aliases": [
+    "glasto"
+   ],
+   "venue": "Worthy Farm",
+   "cityQ": "Pilton",
+   "city": "Pilton, UK",
+   "from": "06-20",
+   "to": "07-05",
+   "dates": {}
+  },
+  {
+   "name": "Boomtown",
+   "aliases": [
+    "boomtown fair"
+   ],
+   "venue": "Matterley Estate",
+   "cityQ": "Winchester",
+   "city": "Winchester, UK",
+   "from": "08-01",
+   "to": "08-20",
+   "dates": {}
+  },
+  {
+   "name": "Kappa FuturFestival",
+   "aliases": [
+    "kappa futur",
+    "futur"
+   ],
+   "venue": "Parco Dora",
+   "cityQ": "Turin",
+   "city": "Turin, Italy",
+   "from": "07-01",
+   "to": "07-15",
+   "dates": {}
+  },
+  {
+   "name": "Parookaville",
+   "aliases": [],
+   "venue": "Airport Weeze",
+   "cityQ": "Weeze",
+   "city": "Weeze, Germany",
+   "from": "07-10",
+   "to": "07-25",
+   "dates": {}
+  },
+  {
+   "name": "Untold",
+   "aliases": [
+    "untold festival"
+   ],
+   "venue": "Cluj Arena",
+   "cityQ": "Cluj-Napoca",
+   "city": "Cluj-Napoca, Romania",
+   "from": "07-25",
+   "to": "08-15",
+   "dates": {}
+  },
+  {
+   "name": "Wicked Oaks",
+   "aliases": [
+    "wicked oaks festival",
+    "wicked oaks fest"
+   ],
+   "venue": "Carson Creek Ranch",
+   "cityQ": "Austin",
+   "city": "Austin, TX",
+   "from": "10-15",
+   "to": "11-05",
+   "dates": {
+    "2025": [
+     "2025-10-25",
+     "2025-10-26"
+    ]
+   },
+   "lineups": {
+    "2025": [
+     "Bob Moses",
+     "Cloonee",
+     "Eric Prydz",
+     "Gryffin",
+     "Kaskade",
+     "Martin Garrix",
+     "Bunt.",
+     "LP Giobbi",
+     "Kasablanca",
+     "Max Styler",
+     "Angrybaby",
+     "Jigitz",
+     "Carola",
+     "Jackie Hollander",
+     "Jev",
+     "Shima",
+     "Kai Wachi",
+     "NGHTMRE",
+     "Kompany",
+     "Svdden Death",
+     "YVM3",
+     "Nimda",
+     "Voyd",
+     "Eptic",
+     "Flux Pavilion",
+     "Hedex",
+     "Infekt",
+     "Samplifire",
+     "Must Die!",
+     "Syzy",
+     "Simula",
+     "Automhate",
+     "Mad Dubz",
+     "Codd Dubz",
+     "Pyke",
+     "PhaseOne",
+     "HVDES",
+     "Prosecute",
+     "Stoog3s",
+     "Witching Hour",
+     "Vampa",
+     "Jeanie",
+     "Akeos",
+     "Hexx",
+     "Aweminus",
+     "Mythm",
+     "Bejalvin",
+     "Kerosene",
+     "Warlord",
+     "Neonix",
+     "Phiso",
+     "Otsukare",
+     "STVG",
+     "Vanfleet",
+     "Autograf",
+     "Classmatic",
+     "Dark Heart",
+     "Jaden Thompson",
+     "Luuk Van Dijk",
+     "Mahony",
+     "Maxinne",
+     "Sistek",
+     "SOSA",
+     "Surf Mesa",
+     "Tony Romera",
+     "Wenzday"
+    ]
+   }
+  },
+  {
+   "name": "Breakaway Dallas",
+   "aliases": [
+    "breakaway texas",
+    "breakaway dallas fort worth",
+    "breakaway"
+   ],
+   "venue": "Fair Park",
+   "cityQ": "Dallas",
+   "city": "Dallas, TX",
+   "from": "03-25",
+   "to": "04-30",
+   "dates": {
+    "2026": [
+     "2026-04-10",
+     "2026-04-11"
+    ]
+   },
+   "lineups": {
+    "2026": [
+     "AMÉMÉ",
+     "Angrybaby",
+     "Broken Hill",
+     "Distant Matter",
+     "Eli Brown",
+     "FISHER",
+     "FLY",
+     "Hedex",
+     "HUGEL",
+     "Łaszewo",
+     "Lilly Palmer",
+     "LYNY",
+     "Malóne",
+     "Mary Droppinz",
+     "Neumonic",
+     "Night Tales",
+     "CLR",
+     "SG Lewis",
+     "Sofi Tukker",
+     "Tobiahs",
+     "Trace",
+     "Benjamin Lloyd",
+     "P Plum",
+     "Zircaz"
+    ]
+   }
+  },
+  {
+   "name": "Monegros Desert Festival",
+   "aliases": [
+    "monegros",
+    "monegros festival",
+    "monegros desert"
+   ],
+   "venue": "Desierto de los Monegros",
+   "cityQ": "Fraga",
+   "city": "Fraga, Spain",
+   "from": "07-15",
+   "to": "08-05",
+   "dates": {
+    "2025": [
+     "2025-07-26"
+    ],
+    "2026": [
+     "2026-07-25"
+    ]
+   },
+   "lineups": {
+    "2025": [
+     "Richie Hawtin",
+     "Laurent Garnier",
+     "Indira Paganotto",
+     "Nico Moreno",
+     "Andres Campo",
+     "Pendulum",
+     "Rudimental",
+     "I Hate Models",
+     "Joseph Capriati",
+     "Adam Beyer",
+     "Ilario Alicante",
+     "Julian",
+     "Chris Liberator",
+     "Basswell",
+     "Onlynumbers",
+     "Blawan",
+     "SHDW",
+     "Boris Brejcha",
+     "Seth Troxler",
+     "Ben Sims",
+     "Cinthie",
+     "Protoje",
+     "DJ Tristan",
+     "Héctor Oaks",
+     "Mind Against",
+     "Layla Benitez",
+     "Enzo Siragusa",
+     "Rødhåd",
+     "Len Faki",
+     "Clara Cuvé",
+     "Paco Osuna",
+     "Miss Monique",
+     "Cera Khin",
+     "Shlømo",
+     "Fadi Mohem"
+    ],
+    "2026": [
+     "Amelie Lens",
+     "Ben Klock",
+     "Richie Hawtin",
+     "Joseph Capriati",
+     "Paco Osuna",
+     "Klangkuenstler",
+     "Seth Troxler",
+     "Indira Paganotto",
+     "Patrick Mason",
+     "Brutalismus 3000",
+     "Adriana Lopez",
+     "Ben Sims",
+     "Dax J",
+     "Fatima Hajji",
+     "Perc",
+     "Héctor Oaks",
+     "KINK",
+     "Paula Cazenave",
+     "Marco Faraone",
+     "Chelina Manuhutu b2b Tini Gessler",
+     "Cera Khin",
+     "Manda Moor",
+     "Bárbara Boeing b2b Gee Lane",
+     "Toni Varga",
+     "Len Faki",
+     "Kobosil"
+    ]
+   },
+   "promoters": {
+    "2025": [
+     "Awakenings",
+     "Brunch Electronik",
+     "Unreal Germany"
+    ]
+   }
+  },
+  {
+   "name": "Wasteland SoCal",
+   "aliases": [
+    "wasteland",
+    "wasteland festival",
+    "wasteland socal festival",
+    "wasteland san bernardino"
+   ],
+   "venue": "NOS Events Center",
+   "cityQ": "San Bernardino",
+   "city": "San Bernardino, CA",
+   "from": "08-25",
+   "to": "09-15",
+   "dates": {
+    "2026": [
+     "2026-09-04",
+     "2026-09-05"
+    ]
+   },
+   "lineups": {
+    "2026": [
+     "Lil Texas b2b Yosuf",
+     "Angerfist",
+     "Mad Dog",
+     "Rooler",
+     "Sub Zero Project",
+     "Darren Styles",
+     "Ben Nicky",
+     "DJ Isaac",
+     "Vertile",
+     "Dual Damage",
+     "Fantasm",
+     "Trym",
+     "Winson",
+     "Kobosil",
+     "Alignment",
+     "KUKO",
+     "Johannes Schuster",
+     "Cara Elizabeth",
+     "Restricted",
+     "Kayzo",
+     "Fatima Hajji",
+     "NOVAH",
+     "Onlynumbers",
+     "Somewhen",
+     "Serafina",
+     "Shmitty",
+     "Clawz",
+     "Alyssa Jolee",
+     "Junkie Kid",
+     "Dea Magna b2b Dani Thorne",
+     "BEAUZ",
+     "Levenkhan",
+     "Atmozfears",
+     "Kruelty",
+     "D-Sturb",
+     "Dr Donk",
+     "Sihk b2b Water Spirit"
+    ]
+   },
+   "promoters": {
+    "2026": [
+     "Basscon",
+     "Mutate",
+     "Unreal Germany"
+    ]
+   }
+  }
+ ]
+}

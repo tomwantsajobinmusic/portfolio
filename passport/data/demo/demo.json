@@ -1,0 +1,41 @@
+{
+  "profile": {
+    "username": "thomasbrown",
+    "name": "Thomas Brown",
+    "home": "Austin, TX USA",
+    "favorite_djs": "Bunt, Kuko, Fantasm",
+    "favorite_festival": "Freaky Deaky",
+    "favorite_genre": "Techno, Stutter House",
+    "photo_url": null,
+    "theme": { "raves_before": 207, "fests_before": 6 },
+    "highlighted": ["demo-fisher", "demo-teletech", "demo-acl"]
+  },
+  "entries": [
+    {
+      "id": "demo-fisher", "num": 186, "kind": "show", "title": "Fisher", "venue": "UNVRS", "city": "Ibiza, ESP", "date": "2026-06-18",
+      "artists": [], "notes": "",
+      "bg": { "url": "data/demo/art-fisher.png", "y": 33, "s": 1.0, "tint": "cream" },
+      "stamps": [ { "k": "unvrs", "p": { "img": "data/demo/st-unvrs.png" }, "x": 37, "y": 30, "r": 0, "s": 1.4 } ]
+    },
+    {
+      "id": "demo-acl", "num": 195, "kind": "festival", "title": "ACL Fest", "venue": "Zilker Park", "city": "Austin, TX", "date": "2026-10-04",
+      "artists": ["Bunt", "It's Murph", "Levity", "Snow Strippers"], "notes": "",
+      "bg": { "url": "data/demo/art-acl.png", "y": 31, "s": 0.95, "tint": "cream" },
+      "stamps": [
+        { "k": "bunt", "p": { "img": "data/demo/st-bunt.png" }, "x": 27, "y": 16, "r": 0, "s": 0.85 },
+        { "k": "ss", "p": { "img": "data/demo/st-snowstrippers.png" }, "x": 78, "y": 15, "r": 0, "s": 0.8 },
+        { "k": "murph", "p": { "img": "data/demo/st-murph.png" }, "x": 40, "y": 27, "r": -4, "s": 0.95 },
+        { "k": "levity", "p": { "img": "data/demo/st-levity.png" }, "x": 31, "y": 40, "r": 0, "s": 0.85 }
+      ]
+    },
+    {
+      "id": "demo-teletech", "num": 205, "kind": "show", "title": "Teletech USA", "venue": "The Concourse Project", "city": "Austin, TX", "date": "2026-03-28",
+      "artists": ["Azyr", "Restricted", "Hannah Liang"], "notes": "",
+      "bg": { "url": "data/demo/art-teletech.png", "y": 44, "s": 0.62, "tint": "cream" },
+      "stamps": [
+        { "k": "concourse", "p": { "img": "data/demo/st-concourse.png" }, "x": 35, "y": 24, "r": 0, "s": 1.3 },
+        { "k": "shot", "p": { "img": "data/demo/st-ishotit.png" }, "x": 24, "y": 50, "r": -6, "s": 0.7 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+name: Sync Nova dashboard
+
+on:
+  schedule:
+    # 9am Central. Cron is UTC and does not auto-adjust for US daylight saving.
+    # This is 9am CDT (UTC-5), correct through early November 2026.
+    # After DST ends (~Nov 1, 2026), change this to '0 15 * * *' for 9am CST (UTC-6).
+    - cron: '0 14 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Pull fresh Meta data and rebuild dashboard
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+        run: node scripts/sync-nova.js
+
+      - name: Commit changes if data moved
+        run: |
+          git config user.name "nova-sync-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add nova/index.html
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-sync Nova dashboard data ($(date -u +%F))"
+            git push
+          fi

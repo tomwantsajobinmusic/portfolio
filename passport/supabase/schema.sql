@@ -1,0 +1,171 @@
+-- Rave Passport beta: run this once in Supabase → SQL Editor → New query → Run.
+
+create extension if not exists pgcrypto;
+
+-- 1. Beta gate: sign-ups must carry the beta password. Only its hash is stored here.
+--    Case and extra spaces don't matter. This file sits in a public repo, so the answer itself is never written here.
+create or replace function public.check_beta_invite() returns trigger
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if encode(digest(lower(regexp_replace(trim(coalesce(new.raw_user_meta_data->>'invite', '')), '\s+', ' ', 'g')), 'sha256'), 'hex')
+     <> '3fd2e6e75cbd1c4a26c88394aca22e9bff0827d3e95952ea10cb9571694c18e2' then
+    raise exception 'invite required';
+  end if;
+  return new;
+end $$;
+drop trigger if exists beta_invite_gate on auth.users;
+create trigger beta_invite_gate before insert on auth.users
+  for each row execute function public.check_beta_invite();
+
+-- 2. Profiles: one per traveler.
+create table if not exists public.profiles (
+  id uuid primary key references auth.users on delete cascade,
+  username text unique check (username ~ '^[a-z0-9_.]{2,24}$'),
+  name text default '',
+  home text default '',
+  favorite_djs text default '',
+  favorite_festival text default '',
+  favorite_genre text default '',
+  photo_url text,
+  theme jsonb default '{}'::jsonb,
+  highlighted uuid[] default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create or replace function public.new_profile() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, username)
+  values (new.id, lower(nullif(new.raw_user_meta_data->>'username', '')))
+  on conflict (id) do nothing;
+  return new;
+end $$;
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function public.new_profile();
+
+-- 3. Entries: one page in the book per show or festival.
+create table if not exists public.entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade default auth.uid(),
+  event_id bigint,
+  kind text default 'show',
+  title text not null,
+  venue text default '',
+  city text default '',
+  date date not null,
+  artists text[] default '{}',
+  lineup text[] default '{}',
+  notes text default '',
+  bg jsonb default '{}'::jsonb,
+  stamps jsonb default '[]'::jsonb,
+  shot_it boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists entries_user_date on public.entries (user_id, date);
+
+-- 4. Row-level security: you read and write only your own book.
+alter table public.profiles enable row level security;
+alter table public.entries enable row level security;
+drop policy if exists "own profile" on public.profiles;
+create policy "own profile" on public.profiles for all using (auth.uid() = id) with check (auth.uid() = id);
+drop policy if exists "own entries" on public.entries;
+create policy "own entries" on public.entries for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 5. Image storage: public to view, each person writes only inside their own folder.
+insert into storage.buckets (id, name, public) values ('passport', 'passport', true) on conflict (id) do nothing;
+drop policy if exists "passport upload own" on storage.objects;
+create policy "passport upload own" on storage.objects for insert to authenticated
+  with check (bucket_id = 'passport' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "passport delete own" on storage.objects;
+create policy "passport delete own" on storage.objects for delete to authenticated
+  using (bucket_id = 'passport' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- 6. View-only public books (/passport/?demo and ?u=username) and explicit page numbers.
+alter table public.entries add column if not exists num int;
+alter table public.profiles add column if not exists is_public boolean default false;
+drop policy if exists "public profiles readable" on public.profiles;
+create policy "public profiles readable" on public.profiles for select using (is_public);
+drop policy if exists "public entries readable" on public.entries;
+create policy "public entries readable" on public.entries for select
+  using (exists (select 1 from public.profiles p where p.id = entries.user_id and p.is_public));
+-- Community logo directory: anyone can see logos; only the logo-add function writes them.
+create table if not exists public.logos (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('dj', 'festival', 'club', 'venue')),
+  name text not null,
+  key text not null,
+  url text not null,
+  source text default '',
+  added_by uuid references auth.users on delete set null,
+  created_at timestamptz default now()
+);
+create index if not exists logos_key on public.logos (key);
+alter table public.logos enable row level security;
+drop policy if exists "logos readable" on public.logos;
+create policy "logos readable" on public.logos for select using (true);
+drop policy if exists "remove own logo" on public.logos;
+create policy "remove own logo" on public.logos for delete to authenticated using (added_by = auth.uid());
+
+-- 7. Optional festival day pages (Day 1, Day 2...). Null means the whole festival.
+alter table public.entries add column if not exists day smallint check (day between 1 and 7);
+
+-- 8. Networks where someone has signed in skip the beta question (gate-check function). Keyed IP hashes only.
+create table if not exists public.known_networks (
+  ip_hash text primary key,
+  user_id uuid references auth.users on delete cascade,
+  last_seen timestamptz default now()
+);
+alter table public.known_networks enable row level security; -- no policies: only the gate-check function reads or writes it
+
+-- 9. Promoter / brand logos (Insomniac, Disco Donnie Presents, Teletech...)
+alter table public.logos drop constraint if exists logos_kind_check;
+alter table public.logos add constraint logos_kind_check check (kind in ('dj', 'festival', 'club', 'venue', 'promoter'));
+
+-- 10. Directory admins (Thomas) can remove or swap any logo.
+create table if not exists public.app_admins (user_id uuid primary key references auth.users on delete cascade);
+alter table public.app_admins enable row level security;
+drop policy if exists "see own admin row" on public.app_admins;
+create policy "see own admin row" on public.app_admins for select to authenticated using (user_id = auth.uid());
+insert into public.app_admins (user_id) select id from public.profiles where username = 'thomasbrown' on conflict do nothing;
+drop policy if exists "admins remove any logo" on public.logos;
+create policy "admins remove any logo" on public.logos for delete to authenticated using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));
+
+-- 11. Search cache for the shows function (RA + setlist.fm), 12-hour reuse. Only the function touches it.
+create table if not exists public.search_cache (key text primary key, data jsonb not null, at timestamptz default now());
+alter table public.search_cache enable row level security;
+
+-- 12. Guest list: the gate asks for your name. Anyone on the list makes a passport with just a user name and
+--     password (no email). Matching ignores case, spaces and punctuation. Each name makes one passport.
+--     Admins add and remove names from the profile screen; nobody else can read the list. The old phrase still works.
+create table if not exists public.guest_list (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  name_key text generated always as (regexp_replace(lower(name), '[^a-z0-9]', '', 'g')) stored,
+  claimed_by uuid references auth.users on delete set null,
+  claimed_at timestamptz,
+  added_at timestamptz default now()
+);
+create unique index if not exists guest_list_key on public.guest_list (name_key);
+alter table public.guest_list enable row level security;
+drop policy if exists "admins manage guest list" on public.guest_list;
+create policy "admins manage guest list" on public.guest_list for all to authenticated
+  using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()))
+  with check (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));
+-- Guest accounts are made by the gate-check function, which marks them in app metadata (users can't set that).
+create or replace function public.check_beta_invite() returns trigger
+language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if coalesce(new.raw_app_meta_data->>'guest', '') <> '' then return new; end if;
+  -- the function reserves the name a moment before making the account
+  if exists (select 1 from public.guest_list g where g.name_key = new.raw_user_meta_data->>'guest'
+             and g.claimed_by is null and g.claimed_at > now() - interval '2 minutes') then return new; end if;
+  if encode(digest(lower(regexp_replace(trim(coalesce(new.raw_user_meta_data->>'invite', '')), '\s+', ' ', 'g')), 'sha256'), 'hex')
+     = '3fd2e6e75cbd1c4a26c88394aca22e9bff0827d3e95952ea10cb9571694c18e2' then return new; end if;
+  raise exception 'invite required';
+end $$;
+-- Thomas is on the list, already holding his passport.
+insert into public.guest_list (name, claimed_by, claimed_at)
+  select 'Thomas Brown', id, now() from public.profiles where username = 'thomasbrown' on conflict do nothing;

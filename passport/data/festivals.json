@@ -465,6 +465,155 @@
      "Zircaz"
     ]
    }
+  },
+  {
+   "name": "Monegros Desert Festival",
+   "aliases": [
+    "monegros",
+    "monegros festival",
+    "monegros desert"
+   ],
+   "venue": "Desierto de los Monegros",
+   "cityQ": "Fraga",
+   "city": "Fraga, Spain",
+   "from": "07-15",
+   "to": "08-05",
+   "dates": {
+    "2025": [
+     "2025-07-26"
+    ],
+    "2026": [
+     "2026-07-25"
+    ]
+   },
+   "lineups": {
+    "2025": [
+     "Richie Hawtin",
+     "Laurent Garnier",
+     "Indira Paganotto",
+     "Nico Moreno",
+     "Andres Campo",
+     "Pendulum",
+     "Rudimental",
+     "I Hate Models",
+     "Joseph Capriati",
+     "Adam Beyer",
+     "Ilario Alicante",
+     "Julian",
+     "Chris Liberator",
+     "Basswell",
+     "Onlynumbers",
+     "Blawan",
+     "SHDW",
+     "Boris Brejcha",
+     "Seth Troxler",
+     "Ben Sims",
+     "Cinthie",
+     "Protoje",
+     "DJ Tristan",
+     "Héctor Oaks",
+     "Mind Against",
+     "Layla Benitez",
+     "Enzo Siragusa",
+     "Rødhåd",
+     "Len Faki",
+     "Clara Cuvé",
+     "Paco Osuna",
+     "Miss Monique",
+     "Cera Khin",
+     "Shlømo",
+     "Fadi Mohem"
+    ],
+    "2026": [
+     "Amelie Lens",
+     "Ben Klock",
+     "Richie Hawtin",
+     "Joseph Capriati",
+     "Paco Osuna",
+     "Klangkuenstler",
+     "Seth Troxler",
+     "Indira Paganotto",
+     "Patrick Mason",
+     "Brutalismus 3000",
+     "Adriana Lopez",
+     "Ben Sims",
+     "Dax J",
+     "Fatima Hajji",
+     "Perc",
+     "Héctor Oaks",
+     "KINK",
+     "Paula Cazenave",
+     "Marco Faraone",
+     "Chelina Manuhutu b2b Tini Gessler",
+     "Cera Khin",
+     "Manda Moor",
+     "Bárbara Boeing b2b Gee Lane",
+     "Toni Varga",
+     "Len Faki",
+     "Kobosil"
+    ]
+   }
+  },
+  {
+   "name": "Wasteland SoCal",
+   "aliases": [
+    "wasteland",
+    "wasteland festival",
+    "wasteland socal festival",
+    "wasteland san bernardino"
+   ],
+   "venue": "NOS Events Center",
+   "cityQ": "San Bernardino",
+   "city": "San Bernardino, CA",
+   "from": "08-25",
+   "to": "09-15",
+   "dates": {
+    "2026": [
+     "2026-09-04",
+     "2026-09-05"
+    ]
+   },
+   "lineups": {
+    "2026": [
+     "Lil Texas b2b Yosuf",
+     "Angerfist",
+     "Mad Dog",
+     "Rooler",
+     "Sub Zero Project",
+     "Darren Styles",
+     "Ben Nicky",
+     "DJ Isaac",
+     "Vertile",
+     "Dual Damage",
+     "Fantasm",
+     "Trym",
+     "Winson",
+     "Kobosil",
+     "Alignment",
+     "KUKO",
+     "Johannes Schuster",
+     "Cara Elizabeth",
+     "Restricted",
+     "Kayzo",
+     "Fatima Hajji",
+     "NOVAH",
+     "Onlynumbers",
+     "Somewhen",
+     "Serafina",
+     "Shmitty",
+     "Clawz",
+     "Alyssa Jolee",
+     "Junkie Kid",
+     "Dea Magna b2b Dani Thorne",
+     "BEAUZ",
+     "Levenkhan",
+     "Atmozfears",
+     "Kruelty",
+     "D-Sturb",
+     "Dr Donk",
+     "Sihk b2b Water Spirit"
+    ]
+   }
   }
  ]
 }

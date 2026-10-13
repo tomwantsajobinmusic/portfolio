@@ -137,28 +137,35 @@ create policy "admins remove any logo" on public.logos for delete to authenticat
 create table if not exists public.search_cache (key text primary key, data jsonb not null, at timestamptz default now());
 alter table public.search_cache enable row level security;
 
--- 11. Guest list: the beta gate asks for your name instead of the phrase. Names match without caring about
---     case or extra spaces. Admins add and remove names from the app (profile screen); nobody else can read the list.
---     The old phrase still works as a backup key.
-create table if not exists public.beta_guests (
-  name_key text primary key,
+-- 12. Guest list: the gate asks for your name. Anyone on the list makes a passport with just a user name and
+--     password (no email). Matching ignores case, spaces and punctuation. Each name makes one passport.
+--     Admins add and remove names from the profile screen; nobody else can read the list. The old phrase still works.
+create table if not exists public.guest_list (
+  id uuid primary key default gen_random_uuid(),
   name text not null,
+  name_key text generated always as (regexp_replace(lower(name), '[^a-z0-9]', '', 'g')) stored,
+  claimed_by uuid references auth.users on delete set null,
+  claimed_at timestamptz,
   added_at timestamptz default now()
 );
-alter table public.beta_guests enable row level security;
-drop policy if exists "admins manage guests" on public.beta_guests;
-create policy "admins manage guests" on public.beta_guests for all to authenticated
+create unique index if not exists guest_list_key on public.guest_list (name_key);
+alter table public.guest_list enable row level security;
+drop policy if exists "admins manage guest list" on public.guest_list;
+create policy "admins manage guest list" on public.guest_list for all to authenticated
   using (exists (select 1 from public.app_admins a where a.user_id = auth.uid()))
   with check (exists (select 1 from public.app_admins a where a.user_id = auth.uid()));
-create or replace function public.guest_key(t text) returns text language sql immutable as $$
-  select lower(regexp_replace(trim(coalesce(t, '')), '\s+', ' ', 'g'))
-$$;
+-- Guest accounts are made by the gate-check function, which marks them in app metadata (users can't set that).
 create or replace function public.check_beta_invite() returns trigger
 language plpgsql security definer set search_path = public, extensions as $$
-declare k text := public.guest_key(new.raw_user_meta_data->>'invite');
 begin
-  if exists (select 1 from public.beta_guests where name_key = k) then return new; end if;
-  if encode(digest(k, 'sha256'), 'hex') = '3fd2e6e75cbd1c4a26c88394aca22e9bff0827d3e95952ea10cb9571694c18e2' then return new; end if;
+  if coalesce(new.raw_app_meta_data->>'guest', '') <> '' then return new; end if;
+  -- the function reserves the name a moment before making the account
+  if exists (select 1 from public.guest_list g where g.name_key = new.raw_user_meta_data->>'guest'
+             and g.claimed_by is null and g.claimed_at > now() - interval '2 minutes') then return new; end if;
+  if encode(digest(lower(regexp_replace(trim(coalesce(new.raw_user_meta_data->>'invite', '')), '\s+', ' ', 'g')), 'sha256'), 'hex')
+     = '3fd2e6e75cbd1c4a26c88394aca22e9bff0827d3e95952ea10cb9571694c18e2' then return new; end if;
   raise exception 'invite required';
 end $$;
-insert into public.beta_guests (name_key, name) values ('thomas brown', 'Thomas Brown') on conflict do nothing;
+-- Thomas is on the list, already holding his passport.
+insert into public.guest_list (name, claimed_by, claimed_at)
+  select 'Thomas Brown', id, now() from public.profiles where username = 'thomasbrown' on conflict do nothing;

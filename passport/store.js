@@ -30,10 +30,12 @@ export async function signUp({ username, email, password, invite }) {
   if (!data.session) { const e = new Error('Almost there. Check your email and tap the confirm link. It brings you back here to sign in.'); e.pending = true; throw e; }
   return data.user;
 }
+export const GUEST_DOMAIN = 'guests.thomasbrownworks.com';
 export async function signIn({ email, password }) {
+  email = String(email || '').trim(); if (!email.includes('@')) email = email.toLowerCase().replace(/^@/, '') + '@' + GUEST_DOMAIN;
   if (!LIVE) { const s = local(); if (!s.user || s.user.email !== email) throw new Error('No passport with that email on this device.'); return s.user; }
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Email or password is wrong.' : error.message);
+  if (error) throw new Error(error.message === 'Invalid login credentials' ? 'User name or password is wrong.' : error.message);
   return data.user;
 }
 export async function deleteLogo(id) { if (!LIVE) return; const { error } = await sb.from('logos').delete().eq('id', id); if (error) throw error; }
@@ -53,9 +55,15 @@ async function gateCall(body, token) {
 }
 // guest list: the gate asks for a name, the server says whether it's on the list
 export async function guestOK(name) { if (!LIVE) return false; try { return !!(await gateCall({ name })).ok; } catch (e) { return false; } }
-export async function listGuests() { const { data, error } = await sb.from('beta_guests').select('name_key,name,added_at').order('name'); if (error) throw error; return data || []; }
-export async function addGuest(name) { const n = name.trim().replace(/\s+/g, ' '); const { error } = await sb.from('beta_guests').upsert({ name_key: n.toLowerCase(), name: n }); if (error) throw error; }
-export async function removeGuest(key) { const { error } = await sb.from('beta_guests').delete().eq('name_key', key); if (error) throw error; }
+export async function listGuests() { const { data, error } = await sb.from('guest_list').select('name_key,name,added_at,claimed_by').order('name'); if (error) throw error; return data || []; }
+export async function addGuest(name) { const n = name.trim().replace(/\s+/g, ' '); const { error } = await sb.from('guest_list').upsert({ name: n }, { onConflict: 'name_key', ignoreDuplicates: true }); if (error) throw error; }
+export async function removeGuest(key) { const { error } = await sb.from('guest_list').delete().eq('name_key', key); if (error) throw error; }
+// a name on the list makes a passport with just a user name and password; the server makes the account
+export async function joinGuest({ name, username, password }) {
+  const r = await fetch(SUPABASE_URL + '/functions/v1/gate-check', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }, body: JSON.stringify({ join: { name, username, password } }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok || !j.email) throw new Error(j.error || 'Could not make your passport. Try again.');
+  return signIn({ email: j.email, password });
+}
 export async function knownNetwork() { if (!LIVE) return false; try { return !!(await gateCall({ check: true })).known; } catch (e) { return false; } }
 export async function rememberNetwork() { if (!LIVE) return; try { const { data } = await sb.auth.getSession(); if (data.session) await gateCall({ remember: true }, data.session.access_token); } catch (e) {} }
 export async function signOut() { if (LIVE) await sb.auth.signOut(); else { const s = local(); s.user = null; saveLocal(s); } }

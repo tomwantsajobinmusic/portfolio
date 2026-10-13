@@ -163,10 +163,10 @@ async function guestList(host) {
   if (!host || !(await db.isAdmin().catch(() => false))) return;
   host.innerHTML = `<div class="head" style="margin-top:30px"><span>GUEST LIST</span><small>NAMES THAT GET PAST THE GATE</small></div>
     <div class="row2"><input id="gName" class="field" style="margin:0;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.55)" placeholder="First and last name" maxlength="80" autocapitalize="words"><button class="btn small ghost" id="gAdd" type="button">ADD</button></div>
-    <div class="chips" id="gList" style="margin-top:10px"></div><p class="hint" id="gMsg" style="margin-top:8px">Spelling counts, capitals and extra spaces don’t. Full names are harder to guess than first names.</p>`;
+    <div class="chips" id="gList" style="margin-top:10px"></div><p class="hint" id="gMsg" style="margin-top:8px">Spelling counts; capitals, spaces and dashes don’t. ✓ means they’ve made their passport. Full names are harder to guess than first names.</p>`;
   const draw = async () => { try { const L = await db.listGuests();
-      host.querySelector('#gList').innerHTML = L.map(g => `<button type="button" class="chip" data-g="${esc(g.name_key)}" title="Remove ${esc(g.name)}">${esc(g.name)} ×</button>`).join('') || '<p class="hint">No names yet.</p>';
-      host.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => { if (!confirm('Take ' + b.textContent.replace(/ ×$/, '') + ' off the guest list? Their account keeps working.')) return; try { await db.removeGuest(b.dataset.g); draw(); } catch (x) { toast(x.message); } });
+      host.querySelector('#gList').innerHTML = L.map(g => `<button type="button" class="chip" data-g="${esc(g.name_key)}" title="Remove ${esc(g.name)}">${g.claimed_by ? '✓ ' : ''}${esc(g.name)} ×</button>`).join('') || '<p class="hint">No names yet.</p>';
+      host.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => { if (!confirm('Take ' + b.textContent.replace(/ ×$/, '').replace(/^✓ /, '') + ' off the guest list? Their account keeps working.')) return; try { await db.removeGuest(b.dataset.g); draw(); } catch (x) { toast(x.message); } });
     } catch (x) { host.querySelector('#gMsg').textContent = 'Could not load the list: ' + x.message; } };
   host.querySelector('#gAdd').onclick = async () => { const n = host.querySelector('#gName').value.trim(); if (n.length < 2) return;
     try { await db.addGuest(n); host.querySelector('#gName').value = ''; toast(n + ' is on the list.'); draw(); } catch (x) { toast(x.message); } };
@@ -190,6 +190,7 @@ async function cover() {
 
 /* ---------- 2. application (sign up) ---------- */
 async function apply() {
+  if (store.get('rp-guest') || !store.get('rp-invite')) return applyGuest();
   app.innerHTML = `<section class="screen paper">
     <button class="back" id="bk">← BACK</button>
     <p class="title">TRAVELER INFORMATION</p>
@@ -214,13 +215,38 @@ async function apply() {
     catch (err) { if (err.pending) { store.set('rp-has-account', '1'); return go('signin', err.message); } e.textContent = err.message; b.disabled = false; }
   });
 }
+async function applyGuest() {
+  app.innerHTML = `<section class="screen paper">
+    <button class="back" id="bk">← BACK</button>
+    <p class="title">TRAVELER INFORMATION</p>
+    <form id="f" novalidate>
+      <label class="field"><span>NAME ON THE LIST</span><input id="gn" value="${esc(titleName(store.get('rp-guest') || ''))}" maxlength="80" autocorrect="off" spellcheck="false" autocomplete="name" required></label>
+      <label class="field"><span>PICK A USER NAME</span><input id="u" autocomplete="username" autocapitalize="none" required maxlength="24" placeholder="thomasbrown"></label>
+      <label class="field"><span>PICK A PASSWORD</span><input id="pw" type="password" autocomplete="new-password" minlength="8" required></label>
+      <div class="err" id="e"></div>
+      <button class="btn" type="submit">CONTINUE</button>
+    </form>
+    <p class="hint" style="margin-top:14px">You sign in with your user name and password. No email needed. Your book is private to you.</p>
+  </section>`;
+  $('#bk').onclick = () => go('cover');
+  $('#f').addEventListener('submit', async ev => {
+    ev.preventDefault(); const e = $('#e'); e.textContent = '';
+    const name = $('#gn').value.trim(), username = $('#u').value.trim().toLowerCase().replace(/^@/, ''), password = $('#pw').value;
+    if (!name) return e.textContent = 'Add your name as it is on the list.';
+    if (!/^[a-z0-9_.]{2,24}$/.test(username)) return e.textContent = 'User name: 2 to 24 letters, numbers, dots or underscores.';
+    if (password.length < 8) return e.textContent = 'Password needs at least 8 characters.';
+    const b = ev.submitter || $('#f button'); b.disabled = true;
+    try { await db.joinGuest({ name, username, password }); store.set('rp-has-account', '1'); store.set('rp-guest', name); db.rememberNetwork(); await loadMine(); go('setup'); }
+    catch (err) { e.textContent = err.message; b.disabled = false; }
+  });
+}
 async function signin(note) {
   app.innerHTML = `<section class="screen paper">
     <button class="back" id="bk">← BACK</button>
     <p class="title">WELCOME BACK</p>
     ${note ? `<p class="hint" style="text-align:center;margin:-8px 0 18px">${esc(note)}</p>` : ''}
     <form id="f">
-      <label class="field"><span>EMAIL</span><input id="em" type="email" autocomplete="email" required></label>
+      <label class="field"><span>USER NAME OR EMAIL</span><input id="em" autocomplete="username" autocapitalize="none" autocorrect="off" required></label>
       <label class="field"><span>PASSWORD</span><input id="pw" type="password" autocomplete="current-password" required></label>
       <div class="err" id="e"></div>
       <button class="btn" type="submit">CONTINUE</button>

@@ -20,6 +20,7 @@ export const ENGRAVE = {
 };
 export function engrave(img, { style = 'passport', ink = INKS.navy, max = 900, alphaAsInk = true } = {}) {
   const o = ENGRAVE[style] || ENGRAVE.passport;
+  if (alphaAsInk) img = trim(img); // logos: crop empty padding first so the logo fills the art
   // always engrave at full working size: small logos are scaled up, or their lines come out thinner than a pixel
   const s = max / Math.max(img.width, img.height), W = Math.max(2, Math.round(img.width * s)), H = Math.max(2, Math.round(img.height * s));
   const c = canvas(W, H), x = c.getContext('2d', { willReadFrequently: true });
@@ -103,7 +104,30 @@ function arcText(x, S, text, r, top, size) {
 }
 function fit(x, text, maxW, size, family) { let s = size; x.font = '700 ' + s + 'px ' + family; while (s > 14 && x.measureText(text).width > maxW) { s -= 2; x.font = '700 ' + s + 'px ' + family; } return s; }
 // Logo pixels become ink: transparent or light backgrounds drop out.
+// Crop away empty padding around a logo (transparent, or the solid background colour) so it can be sized by what's actually drawn.
+const trimmed = new WeakMap();
+export function trim(img) {
+  if (trimmed.has(img)) return trimmed.get(img);
+  const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height, k = Math.min(1, 400 / Math.max(W, H));
+  const w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k)), c = canvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+  let out = img;
+  try {
+    x.drawImage(img, 0, 0, w, h); const d = x.getImageData(0, 0, w, h).data;
+    let clear = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 30) clear++;
+    const alpha = clear > d.length / 4 * .05, bg = [d[0], d[1], d[2]];
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) { const i = (y * w + xx) * 4;
+      const on = alpha ? d[i + 3] > 30 : Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 60;
+      if (on) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    if (x1 > x0 && y1 > y0 && ((x1 - x0) * (y1 - y0)) < w * h * .9) {
+      const pad = 2, sx = Math.max(0, (x0 - pad) / k), sy = Math.max(0, (y0 - pad) / k), sw = Math.min(W - sx, (x1 - x0 + pad * 2) / k), sh = Math.min(H - sy, (y1 - y0 + pad * 2) / k);
+      const t = canvas(Math.round(sw), Math.round(sh)); t.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, t.width, t.height); out = t;
+    }
+  } catch (e) { /* cross-origin image: use as is */ }
+  trimmed.set(img, out); return out;
+}
 function inkFrom(img, maxSide, ink, maxW = maxSide) {
+  img = trim(img);
   const s = Math.min(maxW / img.width, maxSide / img.height), w = Math.max(1, Math.round(img.width * s)), h = Math.max(1, Math.round(img.height * s));
   const c = canvas(w, h), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
   const id = x.getImageData(0, 0, w, h), d = id.data; let clear = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 30) clear++;

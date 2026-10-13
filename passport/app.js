@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791909775';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791909775';
+import * as db from './store.js?v=1791909959';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791909959';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -86,6 +86,9 @@ const PROMOTERS = [
 const promotersOf = e => { const t = String(e.title || '').trim(); if (!t) return [];
   return PROMOTERS.filter(p => p.festivals.test(t) && !(p.not && p.not.test(t + ' ' + (e.city || ''))) && !(p.generic && p.generic.test(t) && e.kind !== 'festival')).map(p => p.name); };
 
+// an artist's logo; a name in the lineup that is really a brand (Insomniac, Bassrush…) uses that exact logo instead of a blank stamp
+const actLogo = a => logoFor(a, ['DJs']) || (LOGOS || []).find(l => l.cat !== 'DJs' && l.key === keyOf(a)) || null;
+const actLogos = a => { const L = logosFor(a, ['DJs']); if (L.length) return L; const o = actLogo(a); return o ? logosFor(o.name, [o.cat]) : []; };
 // The main logo plus any alternates saved as "<name> alt", "<name> alternate", "<name> 2", "<name> icon"…
 const ALT_TAIL = /^(alt|alternate|alternative|secondary|v?\d+|wordmark|icon|mark|logo|old|new|classic|white|black|text)+$/;
 const logosFor = (name, cats) => {
@@ -554,7 +557,7 @@ async function editor(existing) {
 
   // sets
   const drawSets = () => { const all = [...new Set([...(e.lineup || []), ...(e.artists || [])])];
-    $('#sets').innerHTML = all.length ? all.map(a => { const lg = logoFor(a, ['DJs']); return `<button type="button" class="chip" data-a="${esc(a)}" aria-pressed="${e.artists.includes(a)}">${lg ? `<img src="${esc(lg.src)}" alt="">` : ''}${esc(a)}</button>`; }).join('') : '<p class="hint">Pick a show above or add artists yourself.</p>';
+    $('#sets').innerHTML = all.length ? all.map(a => { const lg = actLogo(a); return `<button type="button" class="chip" data-a="${esc(a)}" aria-pressed="${e.artists.includes(a)}">${lg ? `<img src="${esc(lg.src)}" alt="">` : ''}${esc(a)}</button>`; }).join('') : '<p class="hint">Pick a show above or add artists yourself.</p>';
     $$('#sets [data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; e.artists = e.artists.includes(a) ? e.artists.filter(x => x !== a) : [...e.artists, a]; drawSets(); drawArts(); drawStampChoices(); drawMissing(); }); };
   $('#addAB').onclick = () => { const a = $('#addA').value.trim(); if (!a) return; if (!e.artists.includes(a)) e.artists.push(a); $('#addA').value = ''; drawSets(); drawArts(); drawStampChoices(); };
   drawSets();
@@ -565,7 +568,7 @@ async function editor(existing) {
     const opts = [], add = lg => { if (lg && !opts.some(o => o.src === lg.src)) opts.push({ label: lg.name, src: lg.src }); };
     const vls = logosFor(e.title, ['Festivals', 'Promoters', 'Clubs', 'Venues']); (vls.length ? vls : logosFor(e.venue, ['Clubs', 'Venues', 'Festivals'])).forEach(add);
     promotersOf(e).forEach(n => logosFor(n, ['Promoters']).forEach(add));
-    e.artists.forEach(a => logosFor(a, ['DJs']).forEach(add));
+    e.artists.forEach(a => actLogos(a).forEach(add));
     $('#arts').innerHTML = (e.bg?.url ? `<button type="button" data-k="keep" aria-pressed="${artChoice?.kind === 'keep'}"><img src="${esc(e.bg.url)}" alt="Current art"></button>` : '') +
       opts.map((o, i) => `<button type="button" data-o="${i}" aria-pressed="${artChoice?.src === o.src}" title="${esc(o.label)}"><img src="${esc(o.src)}" alt="${esc(o.label)}"></button>`).join('') +
       `<label class="filebtn" style="aspect-ratio:1;border:1px dashed var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font:500 11px var(--sans);color:var(--muted)">${artChoice?.kind === 'upload' ? 'PHOTO ADDED ✓' : 'UPLOAD<br>PHOTO OR LOGO'}<input type="file" accept="image/*" id="up"></label>` +
@@ -582,7 +585,7 @@ async function editor(existing) {
     const need = [];
     if (e.title && e.kind === 'festival' && !logoFor(e.title, ['Festivals'])) need.push({ name: e.title, kind: 'festival' });
     if (e.venue && !logoFor(e.venue, ['Clubs', 'Venues', 'Festivals'])) need.push({ name: e.venue, kind: e.kind === 'festival' ? 'venue' : 'club' });
-    e.artists.forEach(a => { if (!logoFor(a, ['DJs'])) need.push({ name: a, kind: 'dj' }); });
+    e.artists.forEach(a => { if (!actLogo(a)) need.push({ name: a, kind: 'dj' }); });
     const host = $('#missing'); if (!need.length) { host.innerHTML = ''; return; }
     host.innerHTML = `<p class="hint" style="margin:0 0 8px">No logo yet for these. Add one and it’s there for everyone:</p><div class="chips">${need.map((n, i) => `<button type="button" class="chip" data-m="${i}" aria-pressed="${openFor === n.name}">+ ${esc(n.name)}</button>`).join('')}</div>
       <div id="mform"></div>`;
@@ -625,7 +628,7 @@ async function editor(existing) {
     else if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
     // promoter stamp (Insomniac on EDC, Beyond Wonderland…), off until tapped
     promotersOf(e).forEach(n => { const pl = logoFor(n, ['Promoters']); if (pl) out.push({ id: 'promo:' + n, label: n + ' logo', p: { shape: 'logo', logo: pl.src, ink: INKS.navy, seed: 17 } }); });
-    e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
+    e.artists.forEach((a, i) => { const lg = actLogo(a); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
   };

@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791909681';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791909681';
+import * as db from './store.js?v=1791909775';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791909775';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -119,7 +119,7 @@ async function start() {
     let d = null; try { d = await db.getPublicBook(who); } catch (e) {}
     if ((!d || !d.entries.length) && who === 'thomasbrown') d = await fetch(dataURL('data/demo/demo.json')).then(r => r.json()).catch(() => null);
     if (!d) { app.innerHTML = '<section class="screen cover"><h1>Rave Passport</h1><p class="gate-q">That passport is private.</p><span></span></section>'; return; }
-    DEMO = true; state = { profile: d.profile, entries: d.entries }; return go('book');
+    DEMO = true; state = { profile: d.profile, entries: noFoil(d.entries) }; return go('book');
   }
   const confirmed = q.has('confirmed') || /type=signup/.test(location.hash);
   if (confirmed) {
@@ -139,7 +139,9 @@ async function start() {
   if (q.has('logos')) return go('logodir');
   go('book');
 }
-async function loadMine() { state.profile = await db.getProfile(); state.entries = await db.listEntries(); }
+// gold foil stamps were retired: drop any that are already on pages
+const noFoil = list => (list || []).map(e => ({ ...e, stamps: (e.stamps || []).filter(s => s.k !== 'hot' && !(s.p && s.p.ink === 'foil')) }));
+async function loadMine() { state.profile = await db.getProfile(); state.entries = noFoil(await db.listEntries()); }
 
 /* ---------- 0. gate ---------- */
 async function gate() {
@@ -623,8 +625,6 @@ async function editor(existing) {
     else if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
     // promoter stamp (Insomniac on EDC, Beyond Wonderland…), off until tapped
     promotersOf(e).forEach(n => { const pl = logoFor(n, ['Promoters']); if (pl) out.push({ id: 'promo:' + n, label: n + ' logo', p: { shape: 'logo', logo: pl.src, ink: INKS.navy, seed: 17 } }); });
-    // hot stamp: the passport crest pressed in gold foil, with the night's name and date
-    if (e.title || e.venue) out.push({ id: 'hot', label: 'Hot stamp (gold foil)', p: { shape: 'circle', top: (e.title || e.venue).toUpperCase(), bottom: 'RAVE PASSPORT', date, logo: 'assets/seal-gold.png', ink: 'foil', seed: 13 } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
@@ -640,7 +640,7 @@ async function editor(existing) {
     $$('#stp [data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; chosen.has(k) ? chosen.delete(k) : chosen.add(k); b.setAttribute('aria-pressed', chosen.has(k)); }); };
   drawStampChoices();
 
-  if (!isNew) $('#del').onclick = async () => { if (!confirm('Delete this page? This cannot be undone.')) return; await db.deleteEntry(e.id); state.entries = await db.listEntries(); go('book'); };
+  if (!isNew) $('#del').onclick = async () => { if (!confirm('Delete this page? This cannot be undone.')) return; await db.deleteEntry(e.id); state.entries = noFoil(await db.listEntries()); go('book'); };
 
   $('#save').onclick = async ev => {
     const b = ev.currentTarget, err = $('#err'); err.textContent = '';
@@ -662,7 +662,7 @@ async function editor(existing) {
       const autoIds = new Set([...A.map(s => s.id), 'shot']), custom = (e.stamps || []).filter(s => !autoIds.has(s.k));
       e.stamps = [...custom, ...A.filter(s => chosen.has(s.id) || s.id === 'shot').map(s => { const o = old.get(s.id); if (o) return o.p && o.p.img ? o : { ...o, p: s.p };
         const [x, y] = spots[si++ % spots.length]; return { k: s.id, p: s.p, x, y, r: Math.round(Math.random() * 24 - 12), s: s.p.shape === 'logo' ? .62 : s.p.kind === 'shot' ? .62 : .72 }; })];
-      delete e._s; const saved = await db.saveEntry(e); state.entries = await db.listEntries();
+      delete e._s; const saved = await db.saveEntry(e); state.entries = noFoil(await db.listEntries());
       go('customize', saved.id || e.id);
     } catch (x) { console.error(x); err.textContent = x.message || 'Could not save. Try again.'; b.disabled = false; b.textContent = isNew ? 'MAKE THE PAGE' : 'SAVE'; }
   };
@@ -794,7 +794,7 @@ routes.customize = async function customize(id) {
   tray.innerHTML = `<div class="r" id="hint">Drag stamps to place them. Tap one to change it.</div>
     <div class="r hidden" id="ctl1">SIZE <input type="range" id="sz" min=".4" max="1.8" step=".02"> TURN <input type="range" id="rt" min="-45" max="45" step="1"></div>
     <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket'], ['city', 'City'], ['entry', 'Entry']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
-    <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}<button type="button" data-ink="foil" style="background:linear-gradient(135deg,#8a6516,#e9cf7a 30%,#b48a2c 50%,#f6e3a1 70%,#a67d24)" aria-label="Gold foil (hot stamp)" title="Hot stamp: gold foil"></button></div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
+    <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}</div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
     <div class="r">PAGE <div class="sw tints">${Object.entries({ cream: '#f3eddc', blue: '#c9dbe8', rose: '#efcfca', tan: '#e9d6ae', mint: '#cfe3d2' }).map(([t, c]) => `<button type="button" data-tint="${t}" style="background:${c}" aria-label="${t} page" aria-pressed="${(e.bg?.tint || 'cream') === t}"></button>`).join('')}</div>
       ${e.bg?.url ? 'ART <input type="range" id="ay" min="15" max="45" step="1" aria-label="Art height">' : ''}</div>
     <div class="r" style="justify-content:space-between"><button class="btn small ghost" id="cx" type="button">CANCEL</button><button class="btn small" id="ok" type="button">DONE</button></div>`;
@@ -824,7 +824,7 @@ routes.customize = async function customize(id) {
   tray.querySelectorAll('[data-tint]').forEach(b => b.onclick = () => { e.bg = { ...(e.bg || {}), tint: b.dataset.tint }; page.className = 'page tint-' + b.dataset.tint; tray.querySelectorAll('[data-tint]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
   const ay = tray.querySelector('#ay'); if (ay) { const art = page.querySelector('.art'); ay.value = e.bg.y ?? 27; ay.oninput = () => { e.bg.y = +ay.value; art.style.top = ay.value + '%'; }; }
   tray.querySelector('#cx').onclick = () => go('book', idx + 1);
-  tray.querySelector('#ok').onclick = async ev => { ev.currentTarget.disabled = true; try { await db.saveEntry(e); state.entries = await db.listEntries(); toast('Page saved.'); go('book', state.entries.findIndex(x => x.id === id) + 1); } catch (x) { toast(x.message || 'Could not save.'); ev.currentTarget.disabled = false; } };
+  tray.querySelector('#ok').onclick = async ev => { ev.currentTarget.disabled = true; try { await db.saveEntry(e); state.entries = noFoil(await db.listEntries()); toast('Page saved.'); go('book', state.entries.findIndex(x => x.id === id) + 1); } catch (x) { toast(x.message || 'Could not save.'); ev.currentTarget.disabled = false; } };
 };
 
 start().catch(e => { console.error(e); stuck(); });

@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791866074';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791866074';
+import * as db from './store.js?v=1791867042';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791867042';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -592,8 +592,12 @@ async function editor(existing) {
     return out;
   };
   let chosen = new Set((e.stamps || []).map(s => s.k));
-  if (isNew) chosen = new Set(['venue']);
-  const drawStampChoices = () => { const A = autoStamps(); if (isNew) { e.artists.forEach(a => chosen.add('a:' + a)); chosen.add('loc'); chosen.add('place'); }
+  if (isNew) chosen = new Set();
+  // on a new page each stamp starts on or off the first time it shows up; after that only a tap changes it,
+  // so turning one off sticks even when typing or picking a show redraws the list
+  const offered = new Set(), startsOn = id => id === 'venue' ? e.kind !== 'festival' : id === 'loc' || id === 'place' || id.startsWith('a:');
+  const drawStampChoices = () => { const A = autoStamps();
+    for (const st of A) if (!offered.has(st.id)) { offered.add(st.id); if (isNew && startsOn(st.id)) chosen.add(st.id); }
     $('#stp').innerHTML = A.map(s => `<button type="button" class="chip" data-k="${esc(s.id)}" aria-pressed="${chosen.has(s.id)}">${esc(s.label)}</button>`).join('') || '<p class="hint">Stamps appear once there is a show.</p>';
     $$('#stp [data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; chosen.has(k) ? chosen.delete(k) : chosen.add(k); b.setAttribute('aria-pressed', chosen.has(k)); }); };
   drawStampChoices();

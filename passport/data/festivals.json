@@ -1,5 +1,5 @@
 {
- "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet. lineups = full poster lineup per year, used when setlist.fm has no sets logged.",
+ "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet. lineups = full poster lineup per year, used when setlist.fm has no sets logged. promoters = co-promoters / stage hosts per year, offered as stamps.",
  "festivals": [
   {
    "name": "Portola",
@@ -552,6 +552,13 @@
      "Len Faki",
      "Kobosil"
     ]
+   },
+   "promoters": {
+    "2025": [
+     "Awakenings",
+     "Brunch Electronik",
+     "Unreal Germany"
+    ]
    }
   },
   {
@@ -612,6 +619,13 @@
      "D-Sturb",
      "Dr Donk",
      "Sihk b2b Water Spirit"
+    ]
+   },
+   "promoters": {
+    "2026": [
+     "Basscon",
+     "Mutate",
+     "Unreal Germany"
     ]
    }
   }

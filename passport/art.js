@@ -164,7 +164,7 @@ export function oneColorFlag(img, ink = INKS.navy, w = 240, border = true) {
   if (img.src) flagCache.set(k, c); return c;
 }
 
-/** shape: 'logo' | 'circle' | 'rect' | 'oval' | 'hex' | 'ticket' | 'entry'. Returns a 600px transparent canvas.
+/** shape: 'logo' | 'circle' | 'rect' | 'oval' | 'hex' | 'ticket' | 'entry' | 'sticker'. Returns a 600px transparent canvas.
  *  'entry' is a border-control stamp: a one-color flag, the country code, ENTRY, the date and the city. */
 export function stamp({ shape = 'circle', top = '', bottom = '', date = '', small = '', logo = null, flag = null, ink = INKS.navy, seed = 7, wear = .35 } = {}) {
   const S = 600, c = canvas(S, S), x = c.getContext('2d', { willReadFrequently: true });
@@ -176,7 +176,16 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
     if (!logo && flagC) { const k = Math.min(side * wide / flagC.width, side / flagC.height) * .8, w = flagC.width * k, h = flagC.height * k; x.drawImage(flagC, cx - w / 2, cy - h / 2, w, h); return; }
     if (!logo) return; const ic = inkFrom(logo, side, ink, side * wide); x.drawImage(ic, cx - ic.width / 2, cy - ic.height / 2); };
   if (shape === 'logo') putLogo(S * .94, S / 2, S / 2, 1);
-  else if (shape === 'entry') {
+  else if (shape === 'sticker') {
+    // a club sticker, like the round ones Berlin doors put over your phone camera: a solid dot with the logo or name cut out of it
+    x.beginPath(); x.arc(S / 2, S / 2, 272, 0, 7); x.fill();
+    x.globalCompositeOperation = 'destination-out'; x.lineWidth = 5; x.beginPath(); x.arc(S / 2, S / 2, 246, 0, 7); x.stroke();
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    if (logo || flagC) putLogo(logo ? 300 : 220, S / 2 - (bottom ? 18 : 0), S / 2, 1.35);
+    else if (top) { const fs = fit(x, top, 400, 96, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, S / 2, S / 2 - (bottom ? 22 : 0)); }
+    if (bottom) { const fs = fit(x, bottom, 300, 30, mono); x.font = '600 ' + fs + 'px ' + mono; x.fillText(bottom, S / 2, S / 2 + 168); }
+    x.globalCompositeOperation = 'source-over';
+  } else if (shape === 'entry') {
     const y0 = 140, y1 = 460; x.lineWidth = 14; roundRect(x, 30, y0, S - 60, y1 - y0, 26); x.stroke();
     x.lineWidth = 4; roundRect(x, 50, y0 + 20, S - 100, y1 - y0 - 40, 16); x.stroke();
     const fw = 196, fh = fw * .75, fx = 76, fy = y0 + 42;

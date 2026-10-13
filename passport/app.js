@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791864005';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791864005';
+import * as db from './store.js?v=1791865012';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791865012';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -426,6 +426,8 @@ async function editor(existing) {
   if (ccSel) { ccSel.value = e.bg?.cc || ''; ccLabel();
     ccSel.onchange = () => { e.bg = { ...(e.bg || {}), cc: ccSel.value || null }; drawStampChoices(); };
     $('#c').addEventListener('input', () => { e.city = $('#c').value.trim(); ccLabel(); drawStampChoices(); }); }
+  let typing = null; const typed = () => { clearTimeout(typing); typing = setTimeout(() => { e.title = $('#t').value.trim(); e.venue = $('#v').value.trim(); drawStampChoices(); drawArts(); }, 350); };
+  $('#t').addEventListener('input', typed); $('#v').addEventListener('input', typed);
   const syncDay = () => { const f = $('#k').value === 'festival'; $('#dayRow').classList.toggle('hidden', !f); $('#day').disabled = !$('#dayOn').checked; $('#day').classList.toggle('hidden', !$('#dayOn').checked); };
   $('#k').onchange = () => { e.kind = $('#k').value; syncDay(); drawStampChoices(); };
   $('#dayOn').onchange = () => { syncDay(); e.day = $('#dayOn').checked ? +$('#day').value : null; drawStampChoices(); };
@@ -562,6 +564,8 @@ async function editor(existing) {
     const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
     const vl = e.kind === 'festival' ? logoFor(e.title, ['Festivals']) || logoFor(e.venue, ['Clubs', 'Venues']) : logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Festivals', 'Clubs', 'Venues']);
     if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: e.kind !== 'festival' && vl ? 'logo' : 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
+    if (e.kind === 'festival' && e.venue && keyOf(e.venue) !== keyOf(e.title)) { const pl = logoFor(e.venue, ['Clubs', 'Venues']);
+      out.push({ id: 'place', label: e.venue, p: { shape: pl ? 'logo' : 'rect', top: e.venue.toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: pl ? pl.src : null, ink: INKS.green, seed: 5 } }); }
     const ct = pageCountry(e);
     if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
@@ -570,7 +574,7 @@ async function editor(existing) {
   };
   let chosen = new Set((e.stamps || []).map(s => s.k));
   if (isNew) chosen = new Set(['venue']);
-  const drawStampChoices = () => { const A = autoStamps(); if (isNew) { e.artists.forEach(a => chosen.add('a:' + a)); chosen.add('loc'); }
+  const drawStampChoices = () => { const A = autoStamps(); if (isNew) { e.artists.forEach(a => chosen.add('a:' + a)); chosen.add('loc'); chosen.add('place'); }
     $('#stp').innerHTML = A.map(s => `<button type="button" class="chip" data-k="${esc(s.id)}" aria-pressed="${chosen.has(s.id)}">${esc(s.label)}</button>`).join('') || '<p class="hint">Stamps appear once there is a show.</p>';
     $$('#stp [data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; chosen.has(k) ? chosen.delete(k) : chosen.add(k); b.setAttribute('aria-pressed', chosen.has(k)); }); };
   drawStampChoices();

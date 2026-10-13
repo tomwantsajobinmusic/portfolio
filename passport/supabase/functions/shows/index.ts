@@ -155,11 +155,31 @@ async function raSearch(q: string): Promise<Row[]> {
       .filter((r) => rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d).includes(w)));
     out.push(...evs.slice(0, 30)); break;
   }
-  // a club or venue name on its own: its recent nights
-  const club = hits.find((h) => h.searchType === 'CLUB' && norm(h.value).includes(words.join(' ')));
+  // Promoters and clubs: "teletech concourse" = Teletech's nights at The Concourse Project. Whichever words name the
+  // promoter or club pick its nights, and the leftover words narrow them (venue, city or night name), in any order.
+  // Each lookup is its own request, so if RA rejects one the rest of the search still works.
+  const look = async (index: string, term: string) => ((await ra(`query($q:String!){ search(searchTerm:$q, limit:6, indices:[${index}], includeNonLive:true){ searchType id value } }`, { q: term }))?.search || []) as any[];
+  const terms = [q, ...words.filter((w) => w.length > 2).slice(0, 4)];
+  // best candidate: names more of the query's words; a name typed in full beats a partial one ("concourse" still finds The Concourse Project)
+  const pick = (list: any[]) => {
+    let best: any = null, bestN = 0;
+    for (const h of list) { const nw = norm(h.value).split(' ').filter((w) => w && w !== 'the');
+      const hit = nw.filter((w) => words.includes(w)), score = hit.length + (hit.length === nw.length ? .5 : 0);
+      if (hit.some((w) => w.length >= 4) && score > bestN) { best = h; bestN = score; } }
+    return best; };
+  const leftover = (name: string) => { const nw = norm(name).split(' '); return words.filter((w) => !nw.includes(w)); };
+  const narrow = (rows: Row[], rest: string[]) => rows.filter((r) => rest.every((w) => norm(r.v + ' ' + r.l + ' ' + r.n + ' ' + r.d + ' ' + r.a.join(' ')).includes(w)));
+  const promos = (await Promise.all(terms.map((t) => look('PROMOTER', t)))).flat();
+  const promo = pick(promos);
+  if (promo) {
+    const d = await ra(`query($id:ID!){ promoter(id:$id){ past: events(type:PREVIOUS, limit:100){ ${EV} } next: events(type:LATEST, limit:20){ ${EV} } } }`, { id: promo.id });
+    out.push(...narrow([...(d?.promoter?.past || []), ...(d?.promoter?.next || [])].map(raRow), leftover(promo.value)).slice(0, 40));
+  }
+  const clubs = [...hits.filter((h) => h.searchType === 'CLUB'), ...(await Promise.all(terms.slice(1).map((t) => look('CLUB', t)))).flat()];
+  const club = pick(clubs);
   if (club) {
-    const d = await ra(`query($id:ID!){ venue(id:$id){ events(type:PREVIOUS, limit:25){ ${EV} } } }`, { id: club.id });
-    (d?.venue?.events || []).forEach((e: any) => out.push(raRow(e)));
+    const d = await ra(`query($id:ID!){ venue(id:$id){ past: events(type:PREVIOUS, limit:100){ ${EV} } next: events(type:LATEST, limit:20){ ${EV} } } }`, { id: club.id });
+    out.push(...narrow([...(d?.venue?.past || []), ...(d?.venue?.next || [])].map(raRow), leftover(club.value)).slice(0, 40));
   }
   const seen = new Set<string>(); return out.filter((r) => r.d && !seen.has(r.id) && seen.add(r.id));
 }

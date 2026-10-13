@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791870033';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791870033';
+import * as db from './store.js?v=1791909681';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791909681';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -76,6 +76,15 @@ const events = async () => EVENTS || (EVENTS = await fetch(dataURL('data/events.
 const coreKey = s => keyOf(String(s || '').replace(/\b(19|20)\d\d\b/g, '').replace(/\b(music|arts?|and|festival|fest|weekend ?\d?|presents|the|las vegas|ibiza|official)\b/gi, ' '));
 const logoFor = (name, cats) => { const k = keyOf(name), c = coreKey(name); if (!k) return null; const L = (LOGOS || []).filter(l => !cats || cats.includes(l.cat));
   return L.find(l => l.key === k) || L.find(l => c.length > 3 && coreKey(l.name) === c) || L.find(l => l.key.length > 4 && (k.startsWith(l.key) || (k.length > 6 && l.key.startsWith(k)))) || null; };
+
+// Festivals a promoter puts on: their pages offer the promoter's logo as page art and as a stamp.
+// Names match from the start of the page title; generic words (Crush, Skyline, Escape…) only count on festival pages.
+const PROMOTERS = [
+  { name: 'Insomniac', festivals: /^(edc\b|electric daisy|beyond (wonderland|socal)|nocturnal|escape( halloween| psycho)?\b|countdown( nye)?\b|dreamstate|day trip|hard (summer|day of the dead)|wasteland( socal| festival)?$|wasteland socal|electric forest|lost in dreams|okeechobee|apocalypse|zombie ?land|audiotistic|boo seattle|crush\b|edsea|forbidden kingdom|forever midnight|holy ship|middlelands|moonrise|project glow|skyline\b|together as one|zombie apocalypse|factory 93)/i,
+    generic: /^(escape|countdown|crush|skyline|apocalypse|moonrise)\b/i, not: /amsterdam|summerfest|halloween ball/i },
+];
+const promotersOf = e => { const t = String(e.title || '').trim(); if (!t) return [];
+  return PROMOTERS.filter(p => p.festivals.test(t) && !(p.not && p.not.test(t + ' ' + (e.city || ''))) && !(p.generic && p.generic.test(t) && e.kind !== 'festival')).map(p => p.name); };
 
 // The main logo plus any alternates saved as "<name> alt", "<name> alternate", "<name> 2", "<name> icon"…
 const ALT_TAIL = /^(alt|alternate|alternative|secondary|v?\d+|wordmark|icon|mark|logo|old|new|classic|white|black|text)+$/;
@@ -553,6 +562,7 @@ async function editor(existing) {
   const drawArts = () => {
     const opts = [], add = lg => { if (lg && !opts.some(o => o.src === lg.src)) opts.push({ label: lg.name, src: lg.src }); };
     const vls = logosFor(e.title, ['Festivals', 'Promoters', 'Clubs', 'Venues']); (vls.length ? vls : logosFor(e.venue, ['Clubs', 'Venues', 'Festivals'])).forEach(add);
+    promotersOf(e).forEach(n => logosFor(n, ['Promoters']).forEach(add));
     e.artists.forEach(a => logosFor(a, ['DJs']).forEach(add));
     $('#arts').innerHTML = (e.bg?.url ? `<button type="button" data-k="keep" aria-pressed="${artChoice?.kind === 'keep'}"><img src="${esc(e.bg.url)}" alt="Current art"></button>` : '') +
       opts.map((o, i) => `<button type="button" data-o="${i}" aria-pressed="${artChoice?.src === o.src}" title="${esc(o.label)}"><img src="${esc(o.src)}" alt="${esc(o.label)}"></button>`).join('') +
@@ -611,6 +621,8 @@ async function editor(existing) {
       out.push({ id: 'loc', label: 'City stamp · ' + cd.n.charAt(0) + cd.n.slice(1).toLowerCase(), p: { shape: 'city', cityKey: keyOf(cd.k), frame: cd.frame, top: cd.code, small: cd.hi, bottom: cd.n, date, ink: cd.ink, seed: 11 } });
     else if (cityName && ct) out.push({ id: 'loc', label: 'City stamp · ' + cityName, p: { shape: 'city', frame: 'circle', flag: flagPath(ct), top: cityName.toUpperCase(), small: ct.n.toUpperCase(), bottom: ct.a3, date, ink: INKS.blue, seed: 11 } });
     else if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
+    // promoter stamp (Insomniac on EDC, Beyond Wonderland…), off until tapped
+    promotersOf(e).forEach(n => { const pl = logoFor(n, ['Promoters']); if (pl) out.push({ id: 'promo:' + n, label: n + ' logo', p: { shape: 'logo', logo: pl.src, ink: INKS.navy, seed: 17 } }); });
     // hot stamp: the passport crest pressed in gold foil, with the night's name and date
     if (e.title || e.venue) out.push({ id: 'hot', label: 'Hot stamp (gold foil)', p: { shape: 'circle', top: (e.title || e.venue).toUpperCase(), bottom: 'RAVE PASSPORT', date, logo: 'assets/seal-gold.png', ink: 'foil', seed: 13 } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];

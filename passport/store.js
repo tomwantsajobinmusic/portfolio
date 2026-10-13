@@ -1,6 +1,6 @@
 // Data layer. Uses Supabase when config.js has keys; otherwise a local demo mode
 // that keeps everything in this browser so the app can be tried before the backend exists.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791855825';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1791864005';
 
 const LIVE = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
@@ -51,6 +51,11 @@ async function gateCall(body, token) {
   const r = await fetch(SUPABASE_URL + '/functions/v1/gate-check', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token || SUPABASE_ANON_KEY) }, body: JSON.stringify(body) });
   return r.ok ? r.json() : {};
 }
+// guest list: the gate asks for a name, the server says whether it's on the list
+export async function guestOK(name) { if (!LIVE) return false; try { return !!(await gateCall({ name })).ok; } catch (e) { return false; } }
+export async function listGuests() { const { data, error } = await sb.from('beta_guests').select('name_key,name,added_at').order('name'); if (error) throw error; return data || []; }
+export async function addGuest(name) { const n = name.trim().replace(/\s+/g, ' '); const { error } = await sb.from('beta_guests').upsert({ name_key: n.toLowerCase(), name: n }); if (error) throw error; }
+export async function removeGuest(key) { const { error } = await sb.from('beta_guests').delete().eq('name_key', key); if (error) throw error; }
 export async function knownNetwork() { if (!LIVE) return false; try { return !!(await gateCall({ check: true })).known; } catch (e) { return false; } }
 export async function rememberNetwork() { if (!LIVE) return; try { const { data } = await sb.auth.getSession(); if (data.session) await gateCall({ remember: true }, data.session.access_token); } catch (e) {} }
 export async function signOut() { if (LIVE) await sb.auth.signOut(); else { const s = local(); s.user = null; saveLocal(s); } }

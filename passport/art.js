@@ -147,15 +147,49 @@ function inkFrom(img, maxSide, ink, maxW = maxSide) {
   }
   x.putImageData(id, 0, 0); return c;
 }
-/** shape: 'logo' | 'circle' | 'rect' | 'oval' | 'hex' | 'ticket'. Returns a 600px transparent canvas. */
-export function stamp({ shape = 'circle', top = '', bottom = '', date = '', small = '', logo = null, ink = INKS.navy, seed = 7, wear = .35 } = {}) {
+/* ---------- one-color flags: every flag printed in a single ink, like the Flags tab of the Line Engraver ---------- */
+// Dark colors become solid ink, light colors a pale tint, white is the paper. A thin border keeps white-heavy flags (Japan) readable.
+const flagCache = new Map();
+export function oneColorFlag(img, ink = INKS.navy, w = 240, border = true) {
+  const k = img.src + '|' + ink + '|' + w + '|' + border; if (img.src && flagCache.has(k)) return flagCache.get(k);
+  const h = Math.round(w * .75), c = canvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, w, h);
+  const id = x.getImageData(0, 0, w, h), d = id.data, rgb = [1, 3, 5].map(i => parseInt(ink.slice(i, i + 2), 16));
+  for (let i = 0; i < d.length; i += 4) {
+    const l = (.299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2]) / 255, a = Math.min(1, Math.pow(1 - l, .72) * 1.12) * d[i + 3] / 255;
+    d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = a * 255;
+  }
+  x.putImageData(id, 0, 0);
+  if (border) { const b = Math.max(1.5, w / 48); x.strokeStyle = ink; x.lineWidth = b; x.strokeRect(b / 2, b / 2, w - b, h - b); }
+  if (img.src) flagCache.set(k, c); return c;
+}
+
+/** shape: 'logo' | 'circle' | 'rect' | 'oval' | 'hex' | 'ticket' | 'entry'. Returns a 600px transparent canvas.
+ *  'entry' is a border-control stamp: a one-color flag, the country code, ENTRY, the date and the city. */
+export function stamp({ shape = 'circle', top = '', bottom = '', date = '', small = '', logo = null, flag = null, ink = INKS.navy, seed = 7, wear = .35 } = {}) {
   const S = 600, c = canvas(S, S), x = c.getContext('2d', { willReadFrequently: true });
+  const flagC = flag && shape !== 'entry' && !logo ? oneColorFlag(flag, ink, 480) : null; // other shapes carry the flag where a logo would go
   x.fillStyle = ink; x.strokeStyle = ink; x.lineJoin = 'round';
   const mono = '"IBM Plex Mono", Consolas, monospace', cond = 'Oswald, "Arial Narrow", sans-serif';
   // logos fit a box `side` tall and up to `wide`× as wide, so long wordmarks stay big
-  const putLogo = (side, cy, cx = S / 2, wide = 1.5) => { if (!logo) return; const ic = inkFrom(logo, side, ink, side * wide); x.drawImage(ic, cx - ic.width / 2, cy - ic.height / 2); };
+  const putLogo = (side, cy, cx = S / 2, wide = 1.5) => {
+    if (!logo && flagC) { const k = Math.min(side * wide / flagC.width, side / flagC.height) * .8, w = flagC.width * k, h = flagC.height * k; x.drawImage(flagC, cx - w / 2, cy - h / 2, w, h); return; }
+    if (!logo) return; const ic = inkFrom(logo, side, ink, side * wide); x.drawImage(ic, cx - ic.width / 2, cy - ic.height / 2); };
   if (shape === 'logo') putLogo(S * .94, S / 2, S / 2, 1);
-  else if (shape === 'circle') {
+  else if (shape === 'entry') {
+    const y0 = 140, y1 = 460; x.lineWidth = 14; roundRect(x, 30, y0, S - 60, y1 - y0, 26); x.stroke();
+    x.lineWidth = 4; roundRect(x, 50, y0 + 20, S - 100, y1 - y0 - 40, 16); x.stroke();
+    const fw = 196, fh = fw * .75, fx = 76, fy = y0 + 42;
+    if (flag) x.drawImage(oneColorFlag(flag, ink, fw), fx, fy);
+    else { x.lineWidth = 5; x.strokeRect(fx, fy, fw, fh); }
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    const rx = (fx + fw + S - 70) / 2, rw = S - 70 - (fx + fw) - 24;
+    if (top) { const fs = fit(x, top, rw, 108, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, rx, fy + 52); }
+    const sm = small || 'ENTRY'; { const fs = fit(x, sm, rw, 30, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(sm, rx, fy + 124); }
+    x.lineWidth = 4; x.beginPath(); x.moveTo(72, y1 - 104); x.lineTo(S - 72, y1 - 104); x.stroke();
+    const low = [date, bottom].filter(Boolean).join('  ·  ');
+    if (low) { const fs = fit(x, low, S - 160, 32, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(low, S / 2, y1 - 62); }
+  } else if (shape === 'circle') {
     x.lineWidth = 16; x.beginPath(); x.arc(S / 2, S / 2, 280, 0, 7); x.stroke();
     x.lineWidth = 5; x.beginPath(); x.arc(S / 2, S / 2, 258, 0, 7); x.stroke();
     x.lineWidth = 6; x.beginPath(); x.arc(S / 2, S / 2, 178, 0, 7); x.stroke();

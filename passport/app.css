@@ -167,3 +167,5 @@ button{cursor:pointer}
 .tray .shapes .chip{padding:5px 10px;font-size:12px}
 .tray .shapes .chip[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}
 .tray .shapes .chip:disabled{opacity:.35}
+/* one-color country flag beside a location line */
+.cflag{display:inline-block;height:.95em;width:auto;aspect-ratio:4/3;vertical-align:-.12em;margin-left:.4em}

@@ -2,6 +2,7 @@
 // Remembers networks (IP addresses) where someone has signed in, so the beta question isn't asked again there.
 //   POST { check: true }                         -> { known: boolean }   (no sign-in needed)
 //   POST { remember: true } + user's session     -> { ok: true }         (records this network)
+//   POST { name: 'Jane Doe' }                    -> { ok: boolean }      (is this name on the guest list?)
 // Only a keyed hash of the IP is stored, never the address itself. Entries expire after 90 days.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
@@ -32,6 +33,14 @@ Deno.serve(async (req) => {
   const h = await ipHash(ip);
   let body: any = {}; try { body = await req.json(); } catch { /* empty body is a check */ }
 
+  if (typeof body.name === 'string') {
+    // a short pause on every try makes guessing names one by one slow
+    await new Promise((r) => setTimeout(r, 600));
+    const key = body.name.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80);
+    if (key.length < 2) return json({ ok: false });
+    const { data } = await admin.from('beta_guests').select('name').eq('name_key', key).maybeSingle();
+    return json({ ok: !!data });
+  }
   if (body.remember) {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer /, '');
     const { data: u } = await admin.auth.getUser(token);

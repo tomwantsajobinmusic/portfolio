@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791855825';
-import { engrave, passportPhoto, stamp, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791855825';
+import * as db from './store.js?v=1791864005';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791864005';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -36,6 +36,32 @@ const logos = async (fresh) => { if (LOGOS && !fresh) return LOGOS;
 // data files carry the app's version so a new release never reads a stale cached copy
 const APP_V = new URL(import.meta.url).searchParams.get('v') || String(Date.now());
 const dataURL = path => path + '?v=' + APP_V;
+/* ---------- countries and flags: the page's city decides its country, unless the page sets one (bg.cc) ---------- */
+let CTRY = null;
+const countries = async () => CTRY || (CTRY = await fetch(dataURL('data/countries.json')).then(r => r.json()).then(d => {
+  const by = new Map(), a2 = new Map(), cities = new Map(Object.entries(d.cities).map(([c, cc]) => [keyOf(c), cc]));
+  d.countries.forEach(c => { a2.set(c.a2, c); [c.n, c.a3, ...c.al].forEach(n => by.has(keyOf(n)) || by.set(keyOf(n), c)); });
+  const states = new Map(); for (const [cc, list] of [['US', d.us], ['CA', d.ca], ['AU', d.au]]) Object.entries(list).forEach(([code, name]) => { states.set(cc + ':' + code, cc); states.has('n:' + keyOf(name)) || states.set('n:' + keyOf(name), cc); });
+  return { list: d.countries.slice().sort((a, b) => a.n.localeCompare(b.n)), by, a2, cities, states };
+}).catch(() => null));
+// "Austin, TX" → US, "Ibiza, Spain" → ES, "Glasgow" → Scotland. US then Canadian then Australian state codes win over two-letter country codes.
+const findCountry = city => {
+  if (!CTRY || !city) return null;
+  const parts = String(city).split(',').map(s => s.trim()).filter(Boolean); if (!parts.length) return null;
+  const last = parts[parts.length - 1], up = last.toUpperCase(), k = keyOf(last);
+  if (parts.length > 1 && /^[A-Z]{2,3}$/.test(up)) for (const cc of ['US', 'CA', 'AU']) if (CTRY.states.has(cc + ':' + up)) return CTRY.a2.get(cc);
+  const byCity = CTRY.cities.get(keyOf(parts[0])); // "Tbilisi, Georgia" is the country, "Atlanta, Georgia" the state
+  if (byCity && (parts.length === 1 || CTRY.by.get(k)?.a2 === byCity || CTRY.states.get('n:' + k) === byCity)) return CTRY.a2.get(byCity);
+  if (CTRY.states.has('n:' + k) && parts.length > 1) return CTRY.a2.get(CTRY.states.get('n:' + k));
+  if (CTRY.by.has(k) && (k.length > 3 || parts.length > 1)) return CTRY.by.get(k);
+  return byCity ? CTRY.a2.get(byCity) : null;
+};
+const pageCountry = e => !CTRY ? null : e.bg?.cc === 'none' ? null : e.bg?.cc ? CTRY.a2.get(e.bg.cc) || null : findCountry(e.city);
+const flagPath = c => 'data/flags/' + c.a2.toLowerCase() + '.svg';
+// small one-color flags beside a location line: <img class="cflag" data-flag="data/flags/es.svg">
+const fillFlags = async root => { for (const im of root.querySelectorAll('img.cflag[data-flag]')) { try { im.src = oneColorFlag(await loadImage(im.dataset.flag), INKS.navy, 96, true).toDataURL(); } catch (x) { im.remove(); } } };
+const flagTag = c => c ? ` <img class="cflag" data-flag="${esc(flagPath(c))}" alt="${esc(c.n)} flag" title="${esc(c.n)}">` : '';
+
 let FESTS = null;
 const festivals = async () => FESTS || (FESTS = await fetch(dataURL('data/festivals.json')).then(r => r.json()).then(d => d.festivals).catch(() => []));
 const events = async () => EVENTS || (EVENTS = await fetch(dataURL('data/events.json')).then(r => r.json()).then(d => { d.events.forEach(e => e._s = (e.n + ' ' + e.v + ' ' + e.l + ' ' + e.a.join(' ')).toLowerCase()); return d; }).catch(() => ({ events: [] })));
@@ -103,8 +129,8 @@ async function gate() {
   app.innerHTML = `<section class="screen cover gate">
     <img class="seal small" src="assets/seal-gold.png" alt="">
     <form id="g" autocomplete="off">
-      <p class="gate-q">What do you want?</p>
-      <input id="ans" aria-label="Your answer" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="type it">
+      <p class="gate-q">What’s your name?</p>
+      <input id="ans" aria-label="Your first and last name" autocapitalize="words" autocorrect="off" spellcheck="false" autocomplete="name" placeholder="first and last name">
       <div class="err" id="e"></div>
       <button class="gold-btn" type="submit">Enter</button>
     </form>
@@ -112,10 +138,31 @@ async function gate() {
   </section>`;
   $('#ans').focus();
   $('#g').addEventListener('submit', async ev => {
-    ev.preventDefault(); const a = normInvite($('#ans').value);
-    if (await sha256(a) === GATE_HASH) { store.set('rp-gate', 'ok'); store.set('rp-invite', a); go('cover'); }
-    else { $('#e').textContent = 'Not quite. Ask Thomas.'; $('#ans').select(); }
+    ev.preventDefault(); const a = normInvite($('#ans').value); if (!a) return;
+    const btn = ev.submitter || $('#g button'); btn.disabled = true; $('#e').textContent = '';
+    // a name on the guest list gets in; the old phrase still works as a backup key
+    const phrase = await sha256(a) === GATE_HASH, ok = phrase || await db.guestOK(a);
+    btn.disabled = false;
+    if (ok) { store.set('rp-gate', 'ok'); store.set('rp-invite', a); store.set('rp-guest', phrase ? '' : a); go('cover'); }
+    else { $('#e').textContent = 'That name isn’t on the list yet. Ask Thomas.'; $('#ans').select(); }
   });
+}
+
+// "jane doe" from the gate → "Jane Doe" for the profile
+const titleName = s => String(s || '').replace(/(^|[\s'-])\p{L}/gu, m => m.toUpperCase());
+// admins: who can get past the name question
+async function guestList(host) {
+  if (!host || !(await db.isAdmin().catch(() => false))) return;
+  host.innerHTML = `<div class="head" style="margin-top:30px"><span>GUEST LIST</span><small>NAMES THAT GET PAST THE GATE</small></div>
+    <div class="row2"><input id="gName" class="field" style="margin:0;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:rgba(255,255,255,.55)" placeholder="First and last name" maxlength="80" autocapitalize="words"><button class="btn small ghost" id="gAdd" type="button">ADD</button></div>
+    <div class="chips" id="gList" style="margin-top:10px"></div><p class="hint" id="gMsg" style="margin-top:8px">Spelling counts, capitals and extra spaces don’t. Full names are harder to guess than first names.</p>`;
+  const draw = async () => { try { const L = await db.listGuests();
+      host.querySelector('#gList').innerHTML = L.map(g => `<button type="button" class="chip" data-g="${esc(g.name_key)}" title="Remove ${esc(g.name)}">${esc(g.name)} ×</button>`).join('') || '<p class="hint">No names yet.</p>';
+      host.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => { if (!confirm('Take ' + b.textContent.replace(/ ×$/, '') + ' off the guest list? Their account keeps working.')) return; try { await db.removeGuest(b.dataset.g); draw(); } catch (x) { toast(x.message); } });
+    } catch (x) { host.querySelector('#gMsg').textContent = 'Could not load the list: ' + x.message; } };
+  host.querySelector('#gAdd').onclick = async () => { const n = host.querySelector('#gName').value.trim(); if (n.length < 2) return;
+    try { await db.addGuest(n); host.querySelector('#gName').value = ''; toast(n + ' is on the list.'); draw(); } catch (x) { toast(x.message); } };
+  draw();
 }
 
 /* ---------- 1. cover ---------- */
@@ -188,7 +235,7 @@ async function setup() {
     <div class="pf-grid">
       <label class="pf-photo filebtn" id="ph">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="Your passport photo">` : 'TAP TO ADD<br>PASSPORT<br>PHOTO'}<input type="file" accept="image/*" id="pf" aria-label="Passport photo"></label>
       <div>
-        <label class="field"><span>NAME</span><input id="name" value="${esc(p.name)}" maxlength="40" placeholder="THOMAS BROWN"></label>
+        <label class="field"><span>NAME</span><input id="name" value="${esc(p.name || titleName(store.get('rp-guest')))}" maxlength="40" placeholder="THOMAS BROWN"></label>
         <label class="field"><span>HOME</span><input id="home" value="${esc(p.home)}" maxlength="40" placeholder="AUSTIN, TX USA"></label>
       </div>
     </div>
@@ -204,7 +251,9 @@ async function setup() {
     <div class="err" id="e"></div>
     <button class="btn" id="save">${state.profile && state.profile.name ? 'SAVE' : 'ISSUE MY PASSPORT'}</button>
     ${state.profile && state.profile.name ? '<button class="link" id="out" style="margin-top:14px">Sign out</button>' : ''}
+    <div id="guests"></div>
   </section>`;
+  guestList($('#guests'));
   let photoBlob = null;
   $('#pf').onchange = async ev => {
     const f = ev.target.files[0]; if (!f) return;
@@ -231,7 +280,8 @@ const stampCache = new Map();
 async function stampURL(p) {
   const k = JSON.stringify(p); if (stampCache.has(k)) return stampCache.get(k);
   let logo = null; if (p.logo) try { logo = await loadImage(p.logo); } catch (e) {}
-  const url = p.img ? p.img : p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo }).toDataURL();
+  let flag = null; if (p.flag) try { flag = await loadImage(p.flag); } catch (e) {}
+  const url = p.img ? p.img : p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo, flag }).toDataURL();
   stampCache.set(k, url); return url;
 }
 
@@ -240,7 +290,7 @@ const mrz = p => { const n = (p.name || 'RAVER').toUpperCase().replace(/[^A-Z ]/
   return [('P<RVE' + sur + '<<' + giv + '<'.repeat(44)).slice(0, 44), ('R4VE' + String(state.entries.length).padStart(5, '0') + '<4RVE' + '0'.repeat(7) + 'M2610119' + '<'.repeat(44)).slice(0, 44)]; };
 
 async function book(openIndex) {
-  await logos();
+  await logos(); await countries();
   const p = state.profile, E = state.entries, tb = p.theme || {};
   // day pages of the same festival (same name, same year) count as one festival
   const fests = new Set(E.filter(e => e.kind === 'festival').map(e => e.day ? 'd:' + e.title.toLowerCase().trim() + ':' + String(e.date).slice(0, 4) : e.id)).size + (tb.fests_before || 0), raves = E.length + (tb.raves_before || 0);
@@ -254,7 +304,7 @@ async function book(openIndex) {
         <div class="head" style="margin-top:4px"><span>TRAVELER INFORMATION</span></div>
         <div class="pf-grid">
           <div class="pf-photo">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="">` : 'NO PHOTO'}</div>
-          <div><div class="kv"><b>NAME</b><i>${esc(p.name)}</i></div><div class="kv"><b>HOME</b><i>${esc(p.home)}</i></div>
+          <div><div class="kv"><b>NAME</b><i>${esc(p.name)}</i></div><div class="kv"><b>HOME</b><i>${esc(p.home)}${flagTag(findCountry(p.home))}</i></div>
           <div class="kv"><b>RAVES ATTENDED</b><i>${raves}</i></div><div class="kv"><b>FESTIVALS ATTENDED</b><i>${String(fests).padStart(2, '0')}</i></div></div>
         </div>
         <div class="pf-low">
@@ -275,7 +325,7 @@ async function book(openIndex) {
         <h2>${esc(e.title)}${e.kind === 'festival' && e.day ? ` <small class="day">DAY ${+e.day}</small>` : ''}</h2>
         ${e.artists?.length ? `<p><span>${e.kind === 'festival' || e.artists.length > 1 ? 'ARTISTS' : 'LINEUP'}:</span> ${esc(e.artists.join(', '))}</p>` : ''}
         <p><span>DATE:</span> ${esc(longDate(e.date))}</p>
-        <p><span>CITY:</span> ${esc(cityUpper(e.city))}</p>
+        <p><span>CITY:</span> ${esc(cityUpper(e.city))}${flagTag(pageCountry(e))}</p>
         <p class="notes"><span>NOTES:</span> ${esc(e.notes || '')}</p>
       </div>
     </article>`).join('')}
@@ -287,6 +337,7 @@ async function book(openIndex) {
     <button class="primary" id="add">+ Add show</button>
     <button id="edit" class="hidden">Edit page</button>`}
   </nav>`;
+  fillFlags(app);
   // stamps
   for (const e of E) { const host = app.querySelector(`.stamps[data-id="${CSS.escape(e.id)}"]`); await drawStamps(host, e.stamps || []); }
   const hlHost = $('#hl'); for (const e of hl) { const s = (e.stamps || [])[0]; if (s) { const im = new Image(); im.src = await stampURL(s.p); im.alt = e.title; hlHost.append(im); } }
@@ -321,7 +372,7 @@ async function drawStamps(host, list, editing) {
 
 /* ---------- 5. add / edit a page ---------- */
 async function editor(existing) {
-  await logos(true);
+  await logos(true); await countries();
   const isNew = !existing;
   const e = existing ? JSON.parse(JSON.stringify(existing)) : { kind: 'show', title: '', venue: '', city: '', date: new Date().toISOString().slice(0, 10), artists: [], lineup: [], notes: '', bg: { tint: 'cream' }, stamps: [], shot_it: false };
   let bgBlob = null;
@@ -338,6 +389,7 @@ async function editor(existing) {
     <div class="section"><h3>2. THE DETAILS</h3>
       <label class="field"><span>FESTIVAL OR SHOW NAME</span><input id="t" value="${esc(e.title)}" maxlength="60"></label>
       <div class="row2"><label class="field"><span>VENUE</span><input id="v" value="${esc(e.venue)}" maxlength="60"></label><label class="field"><span>CITY</span><input id="c" value="${esc(e.city)}" maxlength="40"></label></div>
+      ${CTRY ? `<label class="field"><span>COUNTRY (FOR THE FLAG AND ENTRY STAMP)</span><select id="cc"><option value="">Match the city</option><option value="none">No country</option>${CTRY.list.map(c => `<option value="${esc(c.a2)}">${esc(c.n)}</option>`).join('')}</select></label>` : ''}
       <div class="row2"><label class="field"><span>DATE</span><input id="d" type="date" value="${esc(e.date)}"></label>
       <label class="field"><span>TYPE</span><select id="k"><option value="show">Show</option><option value="festival">Festival</option></select></label></div>
       <div id="dayRow" class="hidden" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -370,6 +422,10 @@ async function editor(existing) {
     ${isNew ? '' : '<button class="btn ghost" id="del" style="margin-top:10px">DELETE PAGE</button>'}
   </section>`;
   $('#k').value = e.kind;
+  const ccSel = $('#cc'), ccLabel = () => { if (!ccSel) return; const auto = findCountry($('#c').value); ccSel.options[0].textContent = 'Match the city' + (auto ? ' (' + auto.n + ')' : ''); };
+  if (ccSel) { ccSel.value = e.bg?.cc || ''; ccLabel();
+    ccSel.onchange = () => { e.bg = { ...(e.bg || {}), cc: ccSel.value || null }; drawStampChoices(); };
+    $('#c').addEventListener('input', () => { e.city = $('#c').value.trim(); ccLabel(); drawStampChoices(); }); }
   const syncDay = () => { const f = $('#k').value === 'festival'; $('#dayRow').classList.toggle('hidden', !f); $('#day').disabled = !$('#dayOn').checked; $('#day').classList.toggle('hidden', !$('#dayOn').checked); };
   $('#k').onchange = () => { e.kind = $('#k').value; syncDay(); drawStampChoices(); };
   $('#dayOn').onchange = () => { syncDay(); e.day = $('#dayOn').checked ? +$('#day').value : null; drawStampChoices(); };
@@ -408,6 +464,7 @@ async function editor(existing) {
     e.event_id = x.src ? null : x.id; e.title = x.t || x.n || x.v; e.venue = x.v; e.city = x.l; e.date = x.d; e.kind = x.f ? 'festival' : 'show'; e.lineup = x.a.slice(); const qk = keyOf($('#q').value), asked = x.a.filter(a => { const k = keyOf(a); return k.length > 2 && qk.includes(k); });
     e.artists = x.src && x.a.length === 1 ? [...new Set([...(isNew ? [] : e.artists), ...x.a])] : [...new Set([...(isNew ? [] : e.artists), ...asked])];
     $('#t').value = e.title; $('#v').value = e.venue; $('#c').value = e.city; $('#d').value = e.date; $('#k').value = e.kind;
+    if (ccSel) { const fc = findCountry(e.city), xc = x.c && CTRY.by.get(keyOf(x.c)); e.bg = { ...(e.bg || {}), cc: xc && (!fc || fc.a2 !== xc.a2) ? xc.a2 : null }; ccSel.value = e.bg.cc || ''; ccLabel(); }
     if (x.src === 'festival') { e.day = x.day || null; $('#dayOn').checked = !!x.day; if (x.day) $('#day').value = x.day; }
     syncDay();
     if (e.kind === 'festival') chosen.delete('venue'); // festival stamp starts off; the logo is the page art instead
@@ -505,13 +562,15 @@ async function editor(existing) {
     const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
     const vl = e.kind === 'festival' ? logoFor(e.title, ['Festivals']) || logoFor(e.venue, ['Clubs', 'Venues']) : logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Festivals', 'Clubs', 'Venues']);
     if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: e.kind !== 'festival' && vl ? 'logo' : 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
+    const ct = pageCountry(e);
+    if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
   };
   let chosen = new Set((e.stamps || []).map(s => s.k));
   if (isNew) chosen = new Set(['venue']);
-  const drawStampChoices = () => { const A = autoStamps(); if (isNew) e.artists.forEach(a => chosen.add('a:' + a));
+  const drawStampChoices = () => { const A = autoStamps(); if (isNew) { e.artists.forEach(a => chosen.add('a:' + a)); chosen.add('loc'); }
     $('#stp').innerHTML = A.map(s => `<button type="button" class="chip" data-k="${esc(s.id)}" aria-pressed="${chosen.has(s.id)}">${esc(s.label)}</button>`).join('') || '<p class="hint">Stamps appear once there is a show.</p>';
     $$('#stp [data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; chosen.has(k) ? chosen.delete(k) : chosen.add(k); b.setAttribute('aria-pressed', chosen.has(k)); }); };
   drawStampChoices();
@@ -520,6 +579,7 @@ async function editor(existing) {
 
   $('#save').onclick = async ev => {
     const b = ev.currentTarget, err = $('#err'); err.textContent = '';
+    if (ccSel) e.bg = { ...(e.bg || {}), cc: ccSel.value || null };
     e.title = $('#t').value.trim(); e.venue = $('#v').value.trim(); e.city = $('#c').value.trim(); e.date = $('#d').value; e.kind = $('#k').value; e.notes = $('#n').value.trim(); e.shot_it = $('#shot').checked;
     e.day = e.kind === 'festival' && $('#dayOn').checked ? +$('#day').value : null;
     if (!e.title) return err.textContent = 'Give the page a name.'; if (!e.date) return err.textContent = 'Add the date.';
@@ -668,7 +728,7 @@ routes.customize = async function customize(id) {
   const tray = document.createElement('div'); tray.className = 'tray';
   tray.innerHTML = `<div class="r" id="hint">Drag stamps to place them. Tap one to change it.</div>
     <div class="r hidden" id="ctl1">SIZE <input type="range" id="sz" min=".4" max="1.8" step=".02"> TURN <input type="range" id="rt" min="-45" max="45" step="1"></div>
-    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
+    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket'], ['entry', 'Entry']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
     <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}</div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
     <div class="r">PAGE <div class="sw tints">${Object.entries({ cream: '#f3eddc', blue: '#c9dbe8', rose: '#efcfca', tan: '#e9d6ae', mint: '#cfe3d2' }).map(([t, c]) => `<button type="button" data-tint="${t}" style="background:${c}" aria-label="${t} page" aria-pressed="${(e.bg?.tint || 'cream') === t}"></button>`).join('')}</div>
       ${e.bg?.url ? 'ART <input type="range" id="ay" min="15" max="45" step="1" aria-label="Art height">' : ''}</div>
@@ -679,7 +739,7 @@ routes.customize = async function customize(id) {
   const shapeable = s => s && !s.p.img && s.p.kind !== 'shot';
   const select = s => { sel = s; ['ctl1', 'ctl2'].forEach(i => tray.querySelector('#' + i).classList.toggle('hidden', !s));
     tray.querySelector('#ctl3').classList.toggle('hidden', !shapeable(s));
-    if (shapeable(s)) tray.querySelectorAll('[data-shape]').forEach(b => { b.setAttribute('aria-pressed', (s.p.shape || 'circle') === b.dataset.shape); b.disabled = b.dataset.shape === 'logo' && !s.p.logo; }); tray.querySelector('#hint').classList.toggle('hidden', !!s);
+    if (shapeable(s)) tray.querySelectorAll('[data-shape]').forEach(b => { b.setAttribute('aria-pressed', (s.p.shape || 'circle') === b.dataset.shape); b.disabled = (b.dataset.shape === 'logo' && !s.p.logo) || (b.dataset.shape === 'entry' && !s.p.flag); }); tray.querySelector('#hint').classList.toggle('hidden', !!s);
     host.querySelectorAll('img').forEach(im => im.classList.toggle('sel', !!s && im.dataset.k === s.k));
     if (s) { tray.querySelector('#sz').value = s.s || 1; tray.querySelector('#rt').value = s.r || 0; tray.querySelectorAll('[data-ink]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ink === s.p.ink)); } };
   const bind = im => { im.onpointerdown = ev => { ev.preventDefault(); const s = e.stamps.find(x => x.k === im.dataset.k); select(s); im.setPointerCapture(ev.pointerId);
@@ -692,7 +752,7 @@ routes.customize = async function customize(id) {
   tray.querySelectorAll('[data-ink]').forEach(b => b.onclick = async () => { if (!sel || sel.p.kind === 'shot') return; sel.p = { ...sel.p, ink: b.dataset.ink }; await redraw(); select(sel); });
   // switching shape: fill in the wording a framed stamp needs (name, date, city) from the page
   tray.querySelectorAll('[data-shape]').forEach(b => b.onclick = async () => { if (!shapeable(sel)) return;
-    const name = sel.k === 'venue' ? (e.kind === 'festival' ? e.title : e.venue || e.title) : String(sel.k).replace(/^a:/, '');
+    const name = sel.k === 'loc' ? sel.p.top : sel.k === 'venue' ? (e.kind === 'festival' ? e.title : e.venue || e.title) : String(sel.k).replace(/^a:/, '');
     sel.p = { ...sel.p, shape: b.dataset.shape, top: sel.p.top || String(name || '').toUpperCase(), date: sel.p.date || stampDate(e.date), bottom: sel.p.bottom || cityUpper((e.city || '').split(',')[0]) };
     await redraw(); select(sel); });
   tray.querySelector('#rm').onclick = async () => { if (!sel) return; e.stamps = e.stamps.filter(x => x !== sel); select(null); await redraw(); };

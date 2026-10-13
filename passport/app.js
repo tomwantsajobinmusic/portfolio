@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791865625';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791865625';
+import * as db from './store.js?v=1791865956';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791865956';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -56,6 +56,12 @@ const findCountry = city => {
   if (CTRY.by.has(k) && (k.length > 3 || parts.length > 1)) return CTRY.by.get(k);
   return byCity ? CTRY.a2.get(byCity) : null;
 };
+// city stamps: big cities have their own design (frame, landmark, airport code, local hello); others get a generic one
+let CITIES = null;
+const cities = async () => CITIES || (CITIES = await fetch(dataURL('data/cities.json')).then(r => r.json()).then(d => {
+  const m = new Map(d.cities.map(c => [keyOf(c.k), c])); Object.entries(d.alias).forEach(([a, k]) => m.has(keyOf(a)) || m.set(keyOf(a), m.get(keyOf(k)))); return m;
+}).catch(() => new Map()));
+const svgURL = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 const pageCountry = e => !CTRY ? null : e.bg?.cc === 'none' ? null : e.bg?.cc ? CTRY.a2.get(e.bg.cc) || null : findCountry(e.city);
 // European club venues get round rubber stamps by default, like the club stamps in Berlin
 const EUROPE = new Set('AD AL AT BA BE BG BY CH CY CZ DE DK EE ES FI FO FR GB GE GI GR HR HU IE IM IS IT JE LI LT LU LV MC MD ME MK MT NL NO PL PT RO RS RU SE SI SK SM UA VA XK GB-ENG GB-SCT GB-WLS GB-NIR'.split(' '));
@@ -281,9 +287,10 @@ async function setup() {
 const stampCache = new Map();
 async function stampURL(p) {
   const k = JSON.stringify(p); if (stampCache.has(k)) return stampCache.get(k);
+  let icon = null; if (p.cityKey) { const cm = await cities(), cd = cm.get(p.cityKey); if (cd) try { icon = await loadImage(svgURL(cd.icon)); } catch (e) {} }
   let logo = null; if (p.logo) try { logo = await loadImage(p.logo); } catch (e) {}
   let flag = null; if (p.flag) try { flag = await loadImage(p.flag); } catch (e) {}
-  const url = p.img ? p.img : p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo, flag }).toDataURL();
+  const url = p.img ? p.img : p.kind === 'shot' ? 'assets/i-shot-it.png' : stamp({ ...p, logo, flag, icon }).toDataURL();
   stampCache.set(k, url); return url;
 }
 
@@ -292,7 +299,7 @@ const mrz = p => { const n = (p.name || 'RAVER').toUpperCase().replace(/[^A-Z ]/
   return [('P<RVE' + sur + '<<' + giv + '<'.repeat(44)).slice(0, 44), ('R4VE' + String(state.entries.length).padStart(5, '0') + '<4RVE' + '0'.repeat(7) + 'M2610119' + '<'.repeat(44)).slice(0, 44)]; };
 
 async function book(openIndex) {
-  await logos(); await countries();
+  await logos(); await countries(); await cities();
   const p = state.profile, E = state.entries, tb = p.theme || {};
   // day pages of the same festival (same name, same year) count as one festival
   const fests = new Set(E.filter(e => e.kind === 'festival').map(e => e.day ? 'd:' + e.title.toLowerCase().trim() + ':' + String(e.date).slice(0, 4) : e.id)).size + (tb.fests_before || 0), raves = E.length + (tb.raves_before || 0);
@@ -374,7 +381,7 @@ async function drawStamps(host, list, editing) {
 
 /* ---------- 5. add / edit a page ---------- */
 async function editor(existing) {
-  await logos(true); await countries();
+  await logos(true); await countries(); await cities();
   const isNew = !existing;
   const e = existing ? JSON.parse(JSON.stringify(existing)) : { kind: 'show', title: '', venue: '', city: '', date: new Date().toISOString().slice(0, 10), artists: [], lineup: [], notes: '', bg: { tint: 'cream' }, stamps: [], shot_it: false };
   let bgBlob = null;
@@ -572,7 +579,14 @@ async function editor(existing) {
     else if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: e.kind !== 'festival' && vl ? 'logo' : 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
     if (e.kind === 'festival' && e.venue && keyOf(e.venue) !== keyOf(e.title)) { const pl = logoFor(e.venue, ['Clubs', 'Venues']);
       out.push({ id: 'place', label: e.venue, p: euro ? round(e.venue, pl ? pl.src : null, INKS.green, 5) : { shape: pl ? 'logo' : 'rect', top: e.venue.toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: pl ? pl.src : null, ink: INKS.green, seed: 5 } }); }
-    if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
+    // city stamp: the city's own design when it's one of the big ones (and in the right country), a generic one otherwise
+    const cityName = (e.city || '').split(',')[0].trim(), cd = cityName && CITIES ? CITIES.get(keyOf(cityName)) : null;
+    if (cd && (!ct || ct.a2 === cd.cc || ct.a2.startsWith(cd.cc + '-')))
+      out.push({ id: 'loc', label: 'City stamp · ' + cd.n.charAt(0) + cd.n.slice(1).toLowerCase(), p: { shape: 'city', cityKey: keyOf(cd.k), frame: cd.frame, top: cd.code, small: cd.hi, bottom: cd.n, date, ink: cd.ink, seed: 11 } });
+    else if (cityName && ct) out.push({ id: 'loc', label: 'City stamp · ' + cityName, p: { shape: 'city', frame: 'circle', flag: flagPath(ct), top: cityName.toUpperCase(), small: ct.n.toUpperCase(), bottom: ct.a3, date, ink: INKS.blue, seed: 11 } });
+    else if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
+    // hot stamp: the passport crest pressed in gold foil, with the night's name and date
+    if (e.title || e.venue) out.push({ id: 'hot', label: 'Hot stamp (gold foil)', p: { shape: 'circle', top: (e.title || e.venue).toUpperCase(), bottom: 'RAVE PASSPORT', date, logo: 'assets/seal-gold.png', ink: 'foil', seed: 13 } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
     return out;
@@ -737,8 +751,8 @@ routes.customize = async function customize(id) {
   const tray = document.createElement('div'); tray.className = 'tray';
   tray.innerHTML = `<div class="r" id="hint">Drag stamps to place them. Tap one to change it.</div>
     <div class="r hidden" id="ctl1">SIZE <input type="range" id="sz" min=".4" max="1.8" step=".02"> TURN <input type="range" id="rt" min="-45" max="45" step="1"></div>
-    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket'], ['entry', 'Entry']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
-    <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}</div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
+    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket'], ['city', 'City'], ['entry', 'Entry']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
+    <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}<button type="button" data-ink="foil" style="background:linear-gradient(135deg,#8a6516,#e9cf7a 30%,#b48a2c 50%,#f6e3a1 70%,#a67d24)" aria-label="Gold foil (hot stamp)" title="Hot stamp: gold foil"></button></div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
     <div class="r">PAGE <div class="sw tints">${Object.entries({ cream: '#f3eddc', blue: '#c9dbe8', rose: '#efcfca', tan: '#e9d6ae', mint: '#cfe3d2' }).map(([t, c]) => `<button type="button" data-tint="${t}" style="background:${c}" aria-label="${t} page" aria-pressed="${(e.bg?.tint || 'cream') === t}"></button>`).join('')}</div>
       ${e.bg?.url ? 'ART <input type="range" id="ay" min="15" max="45" step="1" aria-label="Art height">' : ''}</div>
     <div class="r" style="justify-content:space-between"><button class="btn small ghost" id="cx" type="button">CANCEL</button><button class="btn small" id="ok" type="button">DONE</button></div>`;
@@ -748,7 +762,7 @@ routes.customize = async function customize(id) {
   const shapeable = s => s && !s.p.img && s.p.kind !== 'shot';
   const select = s => { sel = s; ['ctl1', 'ctl2'].forEach(i => tray.querySelector('#' + i).classList.toggle('hidden', !s));
     tray.querySelector('#ctl3').classList.toggle('hidden', !shapeable(s));
-    if (shapeable(s)) tray.querySelectorAll('[data-shape]').forEach(b => { b.setAttribute('aria-pressed', (s.p.shape || 'circle') === b.dataset.shape); b.disabled = (b.dataset.shape === 'logo' && !s.p.logo) || (b.dataset.shape === 'entry' && !s.p.flag); }); tray.querySelector('#hint').classList.toggle('hidden', !!s);
+    if (shapeable(s)) tray.querySelectorAll('[data-shape]').forEach(b => { b.setAttribute('aria-pressed', (s.p.shape || 'circle') === b.dataset.shape); b.disabled = (b.dataset.shape === 'logo' && !s.p.logo) || (b.dataset.shape === 'entry' && !s.p.flag) || (b.dataset.shape === 'city' && !s.p.frame); }); tray.querySelector('#hint').classList.toggle('hidden', !!s);
     host.querySelectorAll('img').forEach(im => im.classList.toggle('sel', !!s && im.dataset.k === s.k));
     if (s) { tray.querySelector('#sz').value = s.s || 1; tray.querySelector('#rt').value = s.r || 0; tray.querySelectorAll('[data-ink]').forEach(b => b.setAttribute('aria-pressed', b.dataset.ink === s.p.ink)); } };
   const bind = im => { im.onpointerdown = ev => { ev.preventDefault(); const s = e.stamps.find(x => x.k === im.dataset.k); select(s); im.setPointerCapture(ev.pointerId);

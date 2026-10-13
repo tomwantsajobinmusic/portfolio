@@ -166,7 +166,8 @@ export function oneColorFlag(img, ink = INKS.navy, w = 240, border = true) {
 
 /** shape: 'logo' | 'circle' | 'rect' | 'oval' | 'hex' | 'ticket' | 'entry' | 'sticker'. Returns a 600px transparent canvas.
  *  'entry' is a border-control stamp: a one-color flag, the country code, ENTRY, the date and the city. */
-export function stamp({ shape = 'circle', top = '', bottom = '', date = '', small = '', logo = null, flag = null, ink = INKS.navy, seed = 7, wear = .35 } = {}) {
+export function stamp({ shape = 'circle', top = '', bottom = '', date = '', small = '', logo = null, flag = null, icon = null, frame = 'circle', ink = INKS.navy, seed = 7, wear = .35 } = {}) {
+  const foil = ink === 'foil'; if (foil) { ink = '#000000'; wear = Math.min(wear, .08); } // hot stamp: drawn as a mask, gilded at the end
   const S = 600, c = canvas(S, S), x = c.getContext('2d', { willReadFrequently: true });
   const flagC = flag && shape !== 'entry' && !logo ? oneColorFlag(flag, ink, 480) : null; // other shapes carry the flag where a logo would go
   x.fillStyle = ink; x.strokeStyle = ink; x.lineJoin = 'round';
@@ -185,6 +186,18 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
     else if (top) { const fs = fit(x, top, 400, 96, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, S / 2, S / 2 - (bottom ? 22 : 0)); }
     if (bottom) { const fs = fit(x, bottom, 300, 30, mono); x.font = '600 ' + fs + 'px ' + mono; x.fillText(bottom, S / 2, S / 2 + 168); }
     x.globalCompositeOperation = 'source-over';
+  } else if (shape === 'city') {
+    // a stamp unique to the city: its own frame, landmark, airport code and local hello
+    const path = inset => cityFrame(x, frame, S, inset);
+    x.lineWidth = 14; path(0); x.stroke(); x.lineWidth = 4; path(22); x.stroke();
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    const narrow = frame === 'hex' || frame === 'octagon' || frame === 'shield';
+    if (small) { const fs = fit(x, small, narrow ? 250 : 300, 28, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(small, S / 2, frame === 'shield' ? 118 : 108); }
+    if (icon) { const ic = inkFrom(icon, 200, ink, 220); x.drawImage(ic, S / 2 - ic.width / 2, 236 - ic.height / 2); }
+    else if (flagC) { const w = 190, h = w * .75; x.drawImage(flagC, S / 2 - w / 2, 236 - h / 2, w, h); }
+    if (top) { const fs = fit(x, top, narrow ? 300 : 340, 96, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(top, S / 2, 384); }
+    const low = [bottom, date].filter(Boolean).join('  ·  ');
+    if (low) { const fs = fit(x, low, frame === 'shield' ? 250 : narrow ? 300 : 340, 28, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(low, S / 2, frame === 'shield' ? 446 : 456); }
   } else if (shape === 'entry') {
     const y0 = 140, y1 = 460; x.lineWidth = 14; roundRect(x, 30, y0, S - 60, y1 - y0, 26); x.stroke();
     x.lineWidth = 4; roundRect(x, 50, y0 + 20, S - 100, y1 - y0 - 40, 16); x.stroke();
@@ -235,7 +248,7 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
       if (date) { const fs = fit(x, date, 290, 36, mono); x.font = '700 ' + fs + 'px ' + mono; x.fillText(date, 380, mid + 18); } }
     if (bottom) { const fs = fit(x, bottom, 470, 28, cond); x.font = '700 ' + fs + 'px ' + cond; x.fillText(bottom, S / 2, y1 - 42); }
   }
-  if (wear > 0) { // patchy ink, like a real rubber stamp
+  if (wear > 0 && !foil) { // patchy ink, like a real rubber stamp
     const r = rng(seed), id = x.getImageData(0, 0, S, S), d = id.data, g = 24, grid = new Float32Array((g + 1) * (g + 1)).map(() => r());
     for (let y = 0; y < S; y++) for (let xx = 0; xx < S; xx++) { const i = (y * S + xx) * 4; if (!d[i + 3]) continue;
       const gx = xx / S * g, gy = y / S * g, ix = gx | 0, iy = gy | 0, fx = gx - ix, fy = gy - iy;
@@ -243,7 +256,33 @@ export function stamp({ shape = 'circle', top = '', bottom = '', date = '', smal
       const k = n * .7 + r() * .3; if (k < wear * .55) d[i + 3] *= .15; else d[i + 3] *= .82 + .18 * Math.min(1, k); }
     x.putImageData(id, 0, 0);
   }
-  return c;
+  return foil ? gild(c) : c;
+}
+// city stamp frames, all about the same size so the inside layout fits any of them
+function cityFrame(x, frame, S, inset) {
+  const cx = S / 2, cy = S / 2, R = 282 - inset; x.beginPath();
+  if (frame === 'octagon' || frame === 'hex') { const n = frame === 'hex' ? 6 : 8, off = frame === 'hex' ? -Math.PI / 2 : Math.PI / 8;
+    for (let i = 0; i <= n; i++) { const a = off + i * 2 * Math.PI / n, px = cx + R * Math.cos(a), py = cy + R * Math.sin(a); i ? x.lineTo(px, py) : x.moveTo(px, py); } }
+  else if (frame === 'scallop') { const n = 22; for (let i = 0; i <= 360; i++) { const a = i / 360 * 2 * Math.PI, r = R - 10 + 10 * Math.cos(a * n); const px = cx + r * Math.cos(a), py = cy + r * Math.sin(a); i ? x.lineTo(px, py) : x.moveTo(px, py); } }
+  else if (frame === 'shield') { const w = R * .92, t = cy - R * .9; x.moveTo(cx - w, t); x.lineTo(cx + w, t); x.lineTo(cx + w, cy + R * .1); x.quadraticCurveTo(cx + w, cy + R * .72, cx, cy + R); x.quadraticCurveTo(cx - w, cy + R * .72, cx - w, cy + R * .1); }
+  else if (frame === 'square') { const h = R * .88; roundRectPath(x, cx - h, cy - h, h * 2, h * 2, 34 - inset * .6); }
+  else x.arc(cx, cy, R, 0, 7);
+  x.closePath();
+}
+function roundRectPath(x, X, Y, w, h, r) { x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); }
+// hot stamp: the inked shape becomes pressed gold foil, with a bright edge on top and a shadow where it sinks into the page
+export function gild(src) {
+  const W = src.width, H = src.height, gold = canvas(W, H), g = gold.getContext('2d');
+  g.drawImage(src, 0, 0); g.globalCompositeOperation = 'source-in';
+  const gr = g.createLinearGradient(0, 0, W, H); [[0, '#6f4f0c'], [.22, '#d2ad52'], [.38, '#94701a'], [.55, '#e6c977'], [.72, '#86621a'], [1, '#c39d44']].forEach(([o, col]) => gr.addColorStop(o, col));
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  // light catches the top-left edges
+  const hl = canvas(W, H), h = hl.getContext('2d'); h.drawImage(src, 0, 0); h.globalCompositeOperation = 'destination-out'; h.drawImage(src, 3, 3);
+  h.globalCompositeOperation = 'source-in'; h.fillStyle = 'rgba(255,248,215,.85)'; h.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = 'source-atop'; g.drawImage(hl, 0, 0);
+  const out = canvas(W, H), o = out.getContext('2d');
+  o.shadowColor = 'rgba(60,40,5,.45)'; o.shadowOffsetX = 2; o.shadowOffsetY = 3; o.shadowBlur = 3; o.drawImage(gold, 0, 0);
+  return out;
 }
 function roundRect(x, X, Y, w, h, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); }
 

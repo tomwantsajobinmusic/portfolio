@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791865465';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791865465';
+import * as db from './store.js?v=1791865625';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791865625';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -57,7 +57,7 @@ const findCountry = city => {
   return byCity ? CTRY.a2.get(byCity) : null;
 };
 const pageCountry = e => !CTRY ? null : e.bg?.cc === 'none' ? null : e.bg?.cc ? CTRY.a2.get(e.bg.cc) || null : findCountry(e.city);
-// European clubs get round door stickers by default, the way Berlin clubs sticker your phone camera
+// European club venues get round rubber stamps by default, like the club stamps in Berlin
 const EUROPE = new Set('AD AL AT BA BE BG BY CH CY CZ DE DK EE ES FI FO FR GB GE GI GR HR HU IE IM IS IT JE LI LT LU LV MC MD ME MK MT NL NO PL PT RO RS RU SE SI SK SM UA VA XK GB-ENG GB-SCT GB-WLS GB-NIR'.split(' '));
 const flagPath = c => 'data/flags/' + c.a2.toLowerCase() + '.svg';
 // small one-color flags beside a location line: <img class="cflag" data-flag="data/flags/es.svg">
@@ -566,12 +566,12 @@ async function editor(existing) {
     const out = [], date = stampDate(e.date), city = cityUpper((e.city || '').split(',')[0]);
     const vl = e.kind === 'festival' ? logoFor(e.title, ['Festivals']) || logoFor(e.venue, ['Clubs', 'Venues']) : logoFor(e.venue, ['Clubs', 'Venues']) || logoFor(e.title, ['Festivals', 'Clubs', 'Venues']);
     const ct = pageCountry(e), euro = !!ct && EUROPE.has(ct.a2);
-    // a logo already says who it is (and often the city), so the city line only goes on name-only stickers
-    const sticker = (name, logo, ink, seed) => ({ shape: 'sticker', top: name.toUpperCase(), bottom: logo ? '' : cityUpper((e.city || '').split(',')[0]), logo, ink, seed, wear: .12 });
-    if ((e.venue || e.title) && euro && e.kind !== 'festival') out.push({ id: 'venue', label: e.venue || e.title, p: sticker(e.venue || e.title, vl ? vl.src : null, INKS.red, 2) });
+    // round stamp: club name around the top, city around the bottom, logo and date in the middle
+    const round = (name, logo, ink, seed) => ({ shape: 'circle', top: name.toUpperCase(), bottom: cityUpper((e.city || '').split(',')[0]), date, logo, ink, seed });
+    if ((e.venue || e.title) && euro && e.kind !== 'festival') out.push({ id: 'venue', label: e.venue || e.title, p: round(e.venue || e.title, vl ? vl.src : null, INKS.red, 2) });
     else if (e.venue || e.title) out.push({ id: 'venue', label: e.kind === 'festival' ? e.title : e.venue || e.title, p: { shape: e.kind !== 'festival' && vl ? 'logo' : 'rect', top: (e.kind === 'festival' ? e.title : e.venue || e.title).toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: e.kind === 'festival' && e.day ? 'DAY ' + e.day : 'ADMITTED', logo: vl ? vl.src : null, ink: INKS.red } });
     if (e.kind === 'festival' && e.venue && keyOf(e.venue) !== keyOf(e.title)) { const pl = logoFor(e.venue, ['Clubs', 'Venues']);
-      out.push({ id: 'place', label: e.venue, p: euro ? sticker(e.venue, pl ? pl.src : null, INKS.green, 5) : { shape: pl ? 'logo' : 'rect', top: e.venue.toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: pl ? pl.src : null, ink: INKS.green, seed: 5 } }); }
+      out.push({ id: 'place', label: e.venue, p: euro ? round(e.venue, pl ? pl.src : null, INKS.green, 5) : { shape: pl ? 'logo' : 'rect', top: e.venue.toUpperCase(), bottom: cityUpper(e.city).replace(', ', ' · '), date, small: 'ADMITTED', logo: pl ? pl.src : null, ink: INKS.green, seed: 5 } }); }
     if (ct) out.push({ id: 'loc', label: 'Entry stamp · ' + ct.n, p: { shape: 'entry', flag: flagPath(ct), top: ct.a3, small: 'ENTRY', bottom: city, date, ink: INKS.blue, seed: 11 } });
     e.artists.forEach((a, i) => { const lg = logoFor(a, ['DJs']); const ink = [INKS.violet, INKS.navy, INKS.green, INKS.pink, INKS.black][i % 5];
       out.push({ id: 'a:' + a, label: a, p: lg ? { shape: 'logo', logo: lg.src, ink, seed: i + 3 } : { shape: 'circle', top: a.toUpperCase(), bottom: city, date, ink, seed: i + 3 } }); });
@@ -737,7 +737,7 @@ routes.customize = async function customize(id) {
   const tray = document.createElement('div'); tray.className = 'tray';
   tray.innerHTML = `<div class="r" id="hint">Drag stamps to place them. Tap one to change it.</div>
     <div class="r hidden" id="ctl1">SIZE <input type="range" id="sz" min=".4" max="1.8" step=".02"> TURN <input type="range" id="rt" min="-45" max="45" step="1"></div>
-    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket'], ['sticker', 'Sticker'], ['entry', 'Entry']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
+    <div class="r hidden" id="ctl3">SHAPE <div class="chips shapes">${[['logo', 'Logo'], ['circle', 'Circle'], ['rect', 'Box'], ['oval', 'Oval'], ['hex', 'Hex'], ['ticket', 'Ticket'], ['entry', 'Entry']].map(([k, l]) => `<button type="button" class="chip" data-shape="${k}">${l}</button>`).join('')}</div></div>
     <div class="r hidden" id="ctl2">INK <div class="sw" id="inks">${Object.entries(INKS).map(([n, c]) => `<button type="button" data-ink="${c}" style="background:${c}" aria-label="${n} ink"></button>`).join('')}</div><button class="btn small ghost" id="rm" type="button">REMOVE</button></div>
     <div class="r">PAGE <div class="sw tints">${Object.entries({ cream: '#f3eddc', blue: '#c9dbe8', rose: '#efcfca', tan: '#e9d6ae', mint: '#cfe3d2' }).map(([t, c]) => `<button type="button" data-tint="${t}" style="background:${c}" aria-label="${t} page" aria-pressed="${(e.bg?.tint || 'cream') === t}"></button>`).join('')}</div>
       ${e.bg?.url ? 'ART <input type="range" id="ay" min="15" max="45" step="1" aria-label="Art height">' : ''}</div>

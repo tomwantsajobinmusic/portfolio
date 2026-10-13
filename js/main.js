@@ -330,6 +330,9 @@
   const MOBILE_QUERY = '(max-width: 720px)';
   const TOUR_CATEGORIES = ['media', 'marketing', 'talent-management'];
   const TOUR_DWELL_MS = 3200;  // how long each category holds before the next takes over
+  // A photo category (Media) flips through several photos inside that same
+  // slot, at the same pace as desktop hover, rather than parking on one.
+  const TOUR_PHOTOS_PER_SLOT = Math.round(TOUR_DWELL_MS / IMAGE_DWELL_MS);
   const LEAVE_FADE_MS = 280;   // tap -> fade to black -> navigate, so it isn't a hard cut
 
   function isMobileViewport() {
@@ -352,40 +355,55 @@
     });
   }
 
-  // What the tour shows at a given step: categories in order, and each full
-  // lap moves one item further through that category's folder, so Media's
-  // photos rotate instead of repeating the same one.
+  // What the tour shows at a given step: categories in order. A video
+  // category plays its one clip for the whole slot; a photo category gets a
+  // burst of photos to flip through. Each full lap continues further along
+  // that folder, so the same few photos don't repeat.
   async function tourEntry(step) {
     const category = TOUR_CATEGORIES[step % TOUR_CATEGORIES.length];
     const items = await loadManifest(folderForCategory(category));
     if (items.length === 0) return null;
     const lap = Math.floor(step / TOUR_CATEGORIES.length);
-    return { category, item: items[lap % items.length] };
+    const isPhotos = items[0].type === 'image';
+    const count = isPhotos ? TOUR_PHOTOS_PER_SLOT : 1;
+    const burst = Array.from({ length: count }, (_, k) => items[(lap * count + k) % items.length]);
+    return { category, burst, holdMs: isPhotos ? IMAGE_DWELL_MS : TOUR_DWELL_MS };
   }
+
+  // Fetches a slot's files ahead of its turn (the HTTP cache does the rest).
+  const warmEntry = (entry) => {
+    if (entry) entry.burst.forEach((item) => preloadItem(item, { waitForVideo: true }));
+  };
+
+  const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
   function startMobileTour() {
     if (!tourAllowed()) return;
     const token = ++tourToken;
-    let step = 0;
 
     const run = async () => {
-      if (token !== tourToken) return;
-      const entry = await tourEntry(step);
-      if (token !== tourToken) return;
-
-      if (entry) {
-        await preloadItem(entry.item, { waitForVideo: true });
+      for (let step = 0; token === tourToken; step++) {
+        const entry = await tourEntry(step);
         if (token !== tourToken) return;
-        showItem(entry.item);
-        setTourHighlight(entry.category);
-        setTaglineWord(TAGLINE_WORDS[entry.category], true);
+        if (!entry) { await wait(TOUR_DWELL_MS); continue; } // nothing in that folder yet
 
-        // Warm the next step's file while this one holds, so it's ready on its turn.
-        tourEntry(step + 1).then((next) => next && preloadItem(next.item, { waitForVideo: true }));
+        for (let k = 0; k < entry.burst.length; k++) {
+          // Never reveal a frame before it has loaded: a slow connection
+          // stretches the flip a little instead of flashing black.
+          await preloadItem(entry.burst[k], { waitForVideo: true });
+          if (token !== tourToken) return;
+          showItem(entry.burst[k]);
+
+          if (k === 0) {
+            setTourHighlight(entry.category);
+            setTaglineWord(TAGLINE_WORDS[entry.category], true);
+            tourEntry(step + 1).then(warmEntry); // warm the next slot while this one holds
+          }
+
+          await wait(entry.holdMs);
+          if (token !== tourToken) return;
+        }
       }
-
-      step++;
-      window.setTimeout(run, TOUR_DWELL_MS);
     };
 
     run();
@@ -440,6 +458,10 @@
      ========================================================= */
 
   document.addEventListener('DOMContentLoaded', () => {
+    // On a phone, start fetching the first Media burst during the intro so
+    // the first lap of the tour doesn't have to wait on the network.
+    if (isMobileViewport() && tourAllowed()) tourEntry(0).then(warmEntry);
+
     runIntroCycle(() => { if (isMobileViewport()) startMobileTour(); });
     initHoverCycling();
     initMobileNav();

@@ -15,11 +15,14 @@
     'about-contact': 'About_Contact',
   };
 
-  // Mobile-only overrides: photos cropped specifically for narrow viewports.
-  // Any category without an entry here just falls back to CATEGORY_FOLDERS,
-  // same as desktop.
+  // Mobile-only overrides: photos and short clips cropped vertically (9:16)
+  // for narrow viewports - the desktop files are landscape and a phone only
+  // shows about a quarter of that frame. Any category without an entry here
+  // just falls back to CATEGORY_FOLDERS, same as desktop.
   const MOBILE_CATEGORY_FOLDERS = {
     media: 'Media - Mobile',
+    marketing: 'Marketing - Mobile',
+    'talent-management': 'Talent Management - Mobile',
   };
 
   // The root "assets - home" folder itself: whatever's dropped there
@@ -38,9 +41,12 @@
 
   let introActive = false; // true for the duration of the load-time cycle; hover shouldn't fight it for the same element
 
-  function runIntroCycle() {
+  // onDone fires once the sequence has settled on the final word (or right
+  // away if there's no tagline to animate) - the mobile tour waits on it so
+  // the two never fight over the same element.
+  function runIntroCycle(onDone) {
     const wordEl = document.getElementById('taglineWord');
-    if (!wordEl) return;
+    if (!wordEl) { onDone && onDone(); return; }
 
     const finalWord = wordEl.textContent.trim() || 'music';
     const sequence = ['media', 'marketing', 'talent management', finalWord];
@@ -53,7 +59,7 @@
 
     const step = () => {
       i++;
-      if (i >= sequence.length) { introActive = false; return; } // done, settled on finalWord
+      if (i >= sequence.length) { introActive = false; onDone && onDone(); return; } // done, settled on finalWord
       wordEl.classList.add('is-cycling');
       window.setTimeout(() => {
         wordEl.innerHTML = `<span class="tagline__word-inner">${sequence[i]}</span>`;
@@ -115,18 +121,15 @@
     layer.innerHTML = '';
   }
 
-  function paintLayer(layer, item, { loop = true } = {}) {
+  function paintLayer(layer, item) {
     clearLayer(layer);
     const src = encodeURI(item.src);
     if (item.type === 'video') {
       const video = document.createElement('video');
       video.src = src;
       video.autoplay = true;
-      video.muted = true;
-      // A looping video never fires 'ended' (the browser just seeks back to
-      // 0 and keeps playing) - loop:false is what lets the mobile loader's
-      // 'ended' listener actually fire once the clip finishes.
-      video.loop = loop;
+      video.muted = true; // muted + playsInline is the only autoplay combination phones allow
+      video.loop = true;
       video.playsInline = true;
       layer.appendChild(video);
     } else {
@@ -137,10 +140,26 @@
   // Resolves once an image is actually decoded and ready to paint, so the
   // crossfade never reveals a layer before its image has loaded (that gap
   // was showing as a flash of the black base background between photos).
-  // Videos resolve immediately - they're handled separately in advance().
-  function preloadItem(item) {
+  // Videos resolve immediately by default - desktop hover handles them
+  // separately in advance(). The mobile tour passes waitForVideo so a clip
+  // is fetched far enough to show a first frame before it fades in, instead
+  // of flashing black on a cellular connection; the timeout keeps one slow
+  // file from stalling the whole tour.
+  function preloadItem(item, { waitForVideo = false } = {}) {
     return new Promise((resolve) => {
-      if (item.type === 'video') { resolve(); return; }
+      if (item.type === 'video') {
+        if (!waitForVideo) { resolve(); return; }
+        const probe = document.createElement('video');
+        const finish = () => { probe.onloadeddata = null; probe.onerror = null; resolve(); };
+        probe.preload = 'auto';
+        probe.muted = true;
+        probe.playsInline = true;
+        probe.onloadeddata = finish;
+        probe.onerror = finish;
+        window.setTimeout(finish, 3000);
+        probe.src = encodeURI(item.src);
+        return;
+      }
       const img = new Image();
       img.onload = () => resolve();
       img.onerror = () => resolve(); // don't block the cycle on one bad file
@@ -149,8 +168,8 @@
   }
 
   // Crossfades to a new item, swapping which of the two layers is "active".
-  function showItem(item, options) {
-    paintLayer(idleLayer, item, options);
+  function showItem(item) {
+    paintLayer(idleLayer, item);
     idleLayer.classList.add('is-visible');
     activeLayer.classList.remove('is-visible');
     const next = activeLayer;
@@ -200,21 +219,11 @@
     return CATEGORY_FOLDERS[category];
   }
 
-  // `maxAdvances` + `onComplete` are used by the mobile tap-loader to stop
-  // after a fixed number of photos rather than running until stopHoverCycle()
-  // is called externally (which is how desktop hover still uses this - no
-  // limit, runs until mouseleave/blur). A wall-clock timer doesn't work for
-  // the mobile case: since advance() awaits each frame's real network load,
-  // a slow connection eats into a fixed time budget and shows fewer photos
-  // than intended. Counting actual shown frames is accurate regardless of
-  // connection speed.
-  //
-  // Video items are never flashed like photos, in either mode: a video's
-  // own length is a known, meaningful preview on its own. Desktop hover
-  // lets it loop (queueNext once it ends); the mobile loader treats a full
-  // playthrough as the whole loader - it finishes and navigates the moment
-  // the video ends, rather than flashing one frame or looping it 8x.
-  async function startHoverCycle(category, { maxAdvances, onComplete } = {}) {
+  // Desktop only: runs from mouseenter/focus until stopHoverCycle() is called
+  // on mouseleave/blur. Photos flash by on a short dwell; a video is a
+  // meaningful preview on its own, so it plays (looping) for up to
+  // VIDEO_MAX_MS before the cycle moves on, rather than being flashed.
+  async function startHoverCycle(category) {
     const folder = folderForCategory(category);
     if (!folder) return;
     const token = ++hoverToken;
@@ -222,7 +231,6 @@
     if (token !== hoverToken || items.length === 0) return;
 
     let index = 0;
-    let shown = 0;
     // Kicked off ahead of time so it usually has a full dwell period to
     // finish; advance() still awaits it, so a slow load extends the dwell
     // instead of ever flashing an unloaded frame.
@@ -234,44 +242,29 @@
       if (token !== hoverToken) return;
 
       const item = items[index % items.length];
-      // Loader mode (maxAdvances) wants exactly one playthrough so 'ended'
-      // below actually fires; desktop hover wants it to loop as normal.
-      showItem(item, { loop: !maxAdvances });
+      showItem(item);
       index++;
-      shown++;
       nextPreload = preloadItem(items[index % items.length]);
 
       if (item.type === 'video') {
         // showItem() just swapped activeLayer, so the live <video> lives there now.
         const liveVideo = activeLayer.querySelector('video');
-        const afterVideo = () => {
-          if (maxAdvances) {
-            onComplete && onComplete(); // loader mode: full playthrough IS the loader, push right after
-          } else {
-            queueNext(); // desktop hover: keep looping until mouseleave
-          }
-        };
         if (liveVideo) {
-          const onEnd = () => { cleanup(); afterVideo(); };
+          const onEnd = () => { cleanup(); queueNext(); };
           const cleanup = () => {
             liveVideo.removeEventListener('ended', onEnd);
             window.clearTimeout(safety);
           };
           liveVideo.addEventListener('ended', onEnd, { once: true });
-          // Safety net in case 'ended' never fires - shorter in loader mode
-          // since we're not trying to let it loop, just finish once.
-          const safetyMs = maxAdvances ? LOADER_VIDEO_SAFETY_MS : VIDEO_MAX_MS;
-          const safety = window.setTimeout(() => { cleanup(); afterVideo(); }, safetyMs);
+          // The clip loops, so 'ended' won't fire on its own - this cap is
+          // what eventually moves the cycle along.
+          const safety = window.setTimeout(() => { cleanup(); queueNext(); }, VIDEO_MAX_MS);
         } else {
-          afterVideo();
+          queueNext();
         }
         return;
       }
 
-      if (maxAdvances && shown >= maxAdvances) {
-        onComplete && onComplete();
-        return;
-      }
       queueNext();
     };
 
@@ -299,9 +292,8 @@
     document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
       const category = link.dataset.category;
       const word = TAGLINE_WORDS[category];
-      // Touch devices fire synthetic mouseenter/focus on tap too, which was
-      // racing the mobile tap-loader below and restarting the cycle mid-play.
-      // These are desktop-only now; behavior at desktop widths is unchanged.
+      // Hover is desktop-only: touch devices fire synthetic mouseenter/focus
+      // on tap, and phones get the auto-tour below instead of a preview.
       link.addEventListener('mouseenter', () => {
         if (isMobileViewport()) return;
         startHoverCycle(category);
@@ -326,54 +318,120 @@
   }
 
   /* =========================================================
-     MOBILE TAP LOADER — touch devices don't get real hover, so
-     tapping a nav item plays the image cycle briefly (like a
-     loading screen) before navigating. Desktop is untouched:
-     this only ever fires under the same breakpoint the rest of
-     the site treats as "mobile".
+     MOBILE — phones have no hover, and making a tap wait on a clip
+     reads as "loading", not as a preview. So there's no tap loader:
+     the homepage tours the categories on its own (tagline word
+     flips, the matching nav item lights up, the background swaps to
+     that category's vertical photo/clip) and a tap just goes.
+     Desktop is untouched: all of this only runs under the same
+     breakpoint the rest of the site treats as "mobile".
      ========================================================= */
 
   const MOBILE_QUERY = '(max-width: 720px)';
-  const LOADER_PHOTO_COUNT = 8; // how many photos the loader shows before navigating
-  const LOADER_VIDEO_SAFETY_MS = 20000; // fallback if a loader video never fires 'ended'
+  const TOUR_CATEGORIES = ['media', 'marketing', 'talent-management'];
+  const TOUR_DWELL_MS = 3200;  // how long each category holds before the next takes over
+  const LEAVE_FADE_MS = 280;   // tap -> fade to black -> navigate, so it isn't a hard cut
 
   function isMobileViewport() {
     return window.matchMedia(MOBILE_QUERY).matches;
   }
 
-  function navigateTo(link) {
-    // Always same-tab here, deliberately - this only ever runs once the
-    // loader finishes, well after the original click event, and mobile
-    // browsers silently block window.open() once it's outside the direct
-    // click (it reads as an unrequested popup, not user-initiated).
-    // location.href has no such restriction. Desktop still opens Media in
-    // a new tab via the anchor's own target="_blank" - this function is
-    // never reached there.
-    window.location.href = link.href;
+  let tourToken = 0; // same stale-timer trick as hoverToken
+
+  // Skipped (the hero just rests on its still image) for anyone who has
+  // asked their device to cut back on motion or data.
+  function tourAllowed() {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const saveData = navigator.connection && navigator.connection.saveData;
+    return !reducedMotion && !saveData;
   }
 
-  function initMobileTapLoader() {
+  function setTourHighlight(category) {
     document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
-      const category = link.dataset.category;
-      link.addEventListener('click', async (e) => {
-        if (!isMobileViewport()) return; // desktop keeps its normal hover behavior
+      link.classList.toggle('is-tour-active', link.dataset.category === category);
+    });
+  }
 
+  // What the tour shows at a given step: categories in order, and each full
+  // lap moves one item further through that category's folder, so Media's
+  // photos rotate instead of repeating the same one.
+  async function tourEntry(step) {
+    const category = TOUR_CATEGORIES[step % TOUR_CATEGORIES.length];
+    const items = await loadManifest(folderForCategory(category));
+    if (items.length === 0) return null;
+    const lap = Math.floor(step / TOUR_CATEGORIES.length);
+    return { category, item: items[lap % items.length] };
+  }
+
+  function startMobileTour() {
+    if (!tourAllowed()) return;
+    const token = ++tourToken;
+    let step = 0;
+
+    const run = async () => {
+      if (token !== tourToken) return;
+      const entry = await tourEntry(step);
+      if (token !== tourToken) return;
+
+      if (entry) {
+        await preloadItem(entry.item, { waitForVideo: true });
+        if (token !== tourToken) return;
+        showItem(entry.item);
+        setTourHighlight(entry.category);
+        setTaglineWord(TAGLINE_WORDS[entry.category], true);
+
+        // Warm the next step's file while this one holds, so it's ready on its turn.
+        tourEntry(step + 1).then((next) => next && preloadItem(next.item, { waitForVideo: true }));
+      }
+
+      step++;
+      window.setTimeout(run, TOUR_DWELL_MS);
+    };
+
+    run();
+  }
+
+  function stopMobileTour() {
+    tourToken++;
+    setTourHighlight(null);
+    setTaglineWord('music', false);
+    stopHoverCycle(); // puts the default hero back
+  }
+
+  // Same-tab on purpose, Media included: this runs after a short fade, not
+  // inside the click's own call stack, and mobile browsers silently block
+  // window.open() there as an unrequested popup. location.href has no such
+  // restriction. Desktop never reaches this - the anchor's own
+  // target="_blank" still opens Media in a new tab there.
+  function leaveTo(link) {
+    tourToken++; // freeze the tour so nothing swaps mid-fade
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.body.classList.add('is-leaving');
+    window.setTimeout(() => { window.location.href = link.href; }, reducedMotion ? 0 : LEAVE_FADE_MS);
+  }
+
+  function initMobileNav() {
+    document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        if (!isMobileViewport()) return; // desktop keeps its normal link behaviour
         e.preventDefault();
-        const folder = folderForCategory(category);
-        const items = folder ? await loadManifest(folder) : [];
-        if (items.length === 0) {
-          navigateTo(link); // nothing to show yet, don't make them wait
-          return;
-        }
-
-        startHoverCycle(category, {
-          maxAdvances: LOADER_PHOTO_COUNT,
-          onComplete: () => {
-            stopHoverCycle();
-            navigateTo(link);
-          },
-        });
+        leaveTo(link);
       });
+    });
+
+    // The back button can restore this page from the browser's back/forward
+    // cache with the fade still applied and the tour stopped.
+    window.addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      document.body.classList.remove('is-leaving');
+      if (isMobileViewport() && !introActive) startMobileTour();
+    });
+
+    // Rotating a phone / resizing across the breakpoint hands over between
+    // the tour and desktop hover.
+    window.matchMedia(MOBILE_QUERY).addEventListener('change', (e) => {
+      if (introActive) return; // the intro's onDone starts the tour if we're still mobile by then
+      if (e.matches) startMobileTour(); else stopMobileTour();
     });
   }
 
@@ -382,9 +440,9 @@
      ========================================================= */
 
   document.addEventListener('DOMContentLoaded', () => {
-    runIntroCycle();
+    runIntroCycle(() => { if (isMobileViewport()) startMobileTour(); });
     initHoverCycling();
-    initMobileTapLoader();
+    initMobileNav();
     resolveDefaultBackground();
   });
 })();

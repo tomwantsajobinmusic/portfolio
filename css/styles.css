@@ -128,9 +128,14 @@ img, video { max-width: 100%; display: block; }
   will-change: transform;
 }
 .scopes__item a:hover,
-.scopes__item a:focus-visible {
+.scopes__item a:focus-visible,
+.scopes__item a.is-tour-active { /* mobile auto-tour lights the current category like hover does on desktop */
   color: #ff5c1a;
 }
+
+/* Mobile tap: the hero fades to the page's own black before navigating */
+.hero { transition: opacity 280ms ease; }
+body.is-leaving .hero { opacity: 0; }
 
 /* ---------- Simple content pages (Marketing, etc.) ---------- */
 .back-link {
@@ -497,6 +502,6 @@ img, video { max-width: 100%; display: block; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bg-layer, .tagline__word-inner { transition: none; }
+  .bg-layer, .tagline__word-inner, .hero { transition: none; }
   .marquee__track { animation: none; }
 }

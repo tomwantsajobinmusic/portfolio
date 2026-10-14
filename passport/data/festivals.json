@@ -1,5 +1,5 @@
 {
- "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet. lineups = full poster lineup per year, used when setlist.fm has no sets logged. promoters = co-promoters / stage hosts per year, offered as stamps.",
+ "note": "Festival venues as setlist.fm names them. dates = confirmed days for years setlist.fm hasn't caught up on yet. lineups = full poster lineup per year, used when setlist.fm has no sets logged. promoters = co-promoters / stage hosts per year, offered as stamps. art = extra logos (stage icons like the Yuma shark) offered as page art and stamps every year.",
  "festivals": [
   {
    "name": "Portola",
@@ -70,7 +70,10 @@
    "city": "Indio, CA",
    "from": "04-08",
    "to": "04-30",
-   "dates": {}
+   "dates": {},
+   "art": [
+    "Yuma Shark"
+   ]
   },
   {
    "name": "Lollapalooza",

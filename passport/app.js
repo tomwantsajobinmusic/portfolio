@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791910127';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791910127';
+import * as db from './store.js?v=1792004048';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1792004048';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -88,7 +88,7 @@ const promotersOf = e => { const t = String(e.title || '').trim(); if (!t) retur
   // co-promoters and stage hosts from the festival calendar (Basscon, Unreal… at Wasteland), for that year
   const k = coreKey(t), f = (FESTS || []).find(f => [f.name, ...(f.aliases || [])].some(n => coreKey(n) === k));
   const yr = String(e.date || '').slice(0, 4), co = f && f.promoters ? (Array.isArray(f.promoters) ? f.promoters : f.promoters[yr] || []) : [];
-  for (const n of co) if (!out.some(o => keyOf(o) === keyOf(n))) out.push(n);
+  for (const n of [...co, ...((f && f.art) || [])]) if (!out.some(o => keyOf(o) === keyOf(n))) out.push(n);
   return out; };
 const promoLogo = n => logoFor(n, ['Promoters']) || (LOGOS || []).find(l => l.key === keyOf(n)) || null;
 

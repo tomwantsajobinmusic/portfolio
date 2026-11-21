@@ -128,14 +128,49 @@ img, video { max-width: 100%; display: block; }
   will-change: transform;
 }
 .scopes__item a:hover,
-.scopes__item a:focus-visible,
-.scopes__item a.is-tour-active { /* mobile auto-tour lights the current category like hover does on desktop */
+.scopes__item a:focus-visible {
   color: #ff5c1a;
 }
 
 /* Mobile tap: the hero fades to the page's own black before navigating */
 .hero { transition: opacity 280ms ease; }
 body.is-leaving .hero { opacity: 0; }
+
+/* ---------- Phone launch sequence ----------
+   A one-time photo push over a pinned logo (see runSplash in js/main.js).
+   Everything here is phone-only; the markup is inert elsewhere. */
+.splash { display: none; }
+.splash__panel {
+  position: absolute;
+  inset: 0;
+  background: #050505;
+  will-change: transform;
+}
+.splash__panel img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* soft vignette behind the logo so it stays legible on brighter photos */
+.splash__panel--photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(closest-side at 50% 50%, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 80%);
+}
+.splash__logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: min(54vw, 230px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  opacity: 0; /* faded in/out from JS */
+  filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
 
 /* ---------- Simple content pages (Marketing, etc.) ---------- */
 .back-link {
@@ -489,6 +524,22 @@ body.is-leaving .hero { opacity: 0; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
+  html.splash-on .splash {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    overflow: hidden;
+    background: #050505;
+    touch-action: manipulation;
+    transition: opacity 450ms ease;
+  }
+  html.splash-on .splash.is-out { opacity: 0; pointer-events: none; }
+  /* the homepage waits behind the splash, then fades up as it lifts */
+  .hero-content { transition: opacity 600ms ease; }
+  html.splash-on .hero-content { opacity: 0; }
+  html.splash-on.splash-done .hero-content { opacity: 1; }
+
   .hero-content { justify-content: flex-start; gap: 3rem; }
   .scopes { align-self: stretch; }
   .scopes__list { align-items: flex-start; }
@@ -502,6 +553,6 @@ body.is-leaving .hero { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bg-layer, .tagline__word-inner, .hero { transition: none; }
+  .bg-layer, .tagline__word-inner, .hero, .hero-content { transition: none; }
   .marquee__track { animation: none; }
 }

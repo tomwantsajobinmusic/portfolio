@@ -15,16 +15,6 @@
     'about-contact': 'About_Contact',
   };
 
-  // Mobile-only overrides: photos and short clips cropped vertically (9:16)
-  // for narrow viewports - the desktop files are landscape and a phone only
-  // shows about a quarter of that frame. Any category without an entry here
-  // just falls back to CATEGORY_FOLDERS, same as desktop.
-  const MOBILE_CATEGORY_FOLDERS = {
-    media: 'Media - Mobile',
-    marketing: 'Marketing - Mobile',
-    'talent-management': 'Talent Management - Mobile',
-  };
-
   // The root "assets - home" folder itself: whatever's dropped there
   // (currently the festival hero shot) is the default background, resolved
   // via the same root-level manifest.json build-assets.js writes.
@@ -41,12 +31,9 @@
 
   let introActive = false; // true for the duration of the load-time cycle; hover shouldn't fight it for the same element
 
-  // onDone fires once the sequence has settled on the final word (or right
-  // away if there's no tagline to animate) - the mobile tour waits on it so
-  // the two never fight over the same element.
-  function runIntroCycle(onDone) {
+  function runIntroCycle() {
     const wordEl = document.getElementById('taglineWord');
-    if (!wordEl) { onDone && onDone(); return; }
+    if (!wordEl) return;
 
     const finalWord = wordEl.textContent.trim() || 'music';
     const sequence = ['media', 'marketing', 'talent management', finalWord];
@@ -59,7 +46,7 @@
 
     const step = () => {
       i++;
-      if (i >= sequence.length) { introActive = false; onDone && onDone(); return; } // done, settled on finalWord
+      if (i >= sequence.length) { introActive = false; return; } // done, settled on finalWord
       wordEl.classList.add('is-cycling');
       window.setTimeout(() => {
         wordEl.innerHTML = `<span class="tagline__word-inner">${sequence[i]}</span>`;
@@ -140,26 +127,10 @@
   // Resolves once an image is actually decoded and ready to paint, so the
   // crossfade never reveals a layer before its image has loaded (that gap
   // was showing as a flash of the black base background between photos).
-  // Videos resolve immediately by default - desktop hover handles them
-  // separately in advance(). The mobile tour passes waitForVideo so a clip
-  // is fetched far enough to show a first frame before it fades in, instead
-  // of flashing black on a cellular connection; the timeout keeps one slow
-  // file from stalling the whole tour.
-  function preloadItem(item, { waitForVideo = false } = {}) {
+  // Videos resolve immediately - they're handled separately in advance().
+  function preloadItem(item) {
     return new Promise((resolve) => {
-      if (item.type === 'video') {
-        if (!waitForVideo) { resolve(); return; }
-        const probe = document.createElement('video');
-        const finish = () => { probe.onloadeddata = null; probe.onerror = null; resolve(); };
-        probe.preload = 'auto';
-        probe.muted = true;
-        probe.playsInline = true;
-        probe.onloadeddata = finish;
-        probe.onerror = finish;
-        window.setTimeout(finish, 3000);
-        probe.src = encodeURI(item.src);
-        return;
-      }
+      if (item.type === 'video') { resolve(); return; }
       const img = new Image();
       img.onload = () => resolve();
       img.onerror = () => resolve(); // don't block the cycle on one bad file
@@ -215,7 +186,6 @@
   }
 
   function folderForCategory(category) {
-    if (isMobileViewport() && MOBILE_CATEGORY_FOLDERS[category]) return MOBILE_CATEGORY_FOLDERS[category];
     return CATEGORY_FOLDERS[category];
   }
 
@@ -293,7 +263,7 @@
       const category = link.dataset.category;
       const word = TAGLINE_WORDS[category];
       // Hover is desktop-only: touch devices fire synthetic mouseenter/focus
-      // on tap, and phones get the auto-tour below instead of a preview.
+      // on tap, and phones have no hover preview at all (a tap just goes).
       link.addEventListener('mouseenter', () => {
         if (isMobileViewport()) return;
         startHoverCycle(category);
@@ -318,102 +288,20 @@
   }
 
   /* =========================================================
-     MOBILE — phones have no hover, and making a tap wait on a clip
-     reads as "loading", not as a preview. So there's no tap loader:
-     the homepage tours the categories on its own (tagline word
-     flips, the matching nav item lights up, the background swaps to
-     that category's vertical photo/clip) and a tap just goes.
-     Desktop is untouched: all of this only runs under the same
-     breakpoint the rest of the site treats as "mobile".
+     MOBILE — phones have no hover, so there is no preview to show
+     and no loader to sit through: a tap just goes (after a short
+     fade). What phones get instead is a one-time launch sequence
+     on arrival - photos pushing through over a pinned logo - and
+     then the homepage settles. Desktop is untouched: all of this
+     only runs under the same breakpoint the rest of the site
+     treats as "mobile".
      ========================================================= */
 
   const MOBILE_QUERY = '(max-width: 720px)';
-  const TOUR_CATEGORIES = ['media', 'marketing', 'talent-management'];
-  const TOUR_DWELL_MS = 3200;  // how long each category holds before the next takes over
-  // A photo category (Media) flips through several photos inside that same
-  // slot, at the same pace as desktop hover, rather than parking on one.
-  const TOUR_PHOTOS_PER_SLOT = Math.round(TOUR_DWELL_MS / IMAGE_DWELL_MS);
   const LEAVE_FADE_MS = 280;   // tap -> fade to black -> navigate, so it isn't a hard cut
 
   function isMobileViewport() {
     return window.matchMedia(MOBILE_QUERY).matches;
-  }
-
-  let tourToken = 0; // same stale-timer trick as hoverToken
-
-  // Skipped (the hero just rests on its still image) for anyone who has
-  // asked their device to cut back on motion or data.
-  function tourAllowed() {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const saveData = navigator.connection && navigator.connection.saveData;
-    return !reducedMotion && !saveData;
-  }
-
-  function setTourHighlight(category) {
-    document.querySelectorAll('.scopes__item a[data-category]').forEach((link) => {
-      link.classList.toggle('is-tour-active', link.dataset.category === category);
-    });
-  }
-
-  // What the tour shows at a given step: categories in order. A video
-  // category plays its one clip for the whole slot; a photo category gets a
-  // burst of photos to flip through. Each full lap continues further along
-  // that folder, so the same few photos don't repeat.
-  async function tourEntry(step) {
-    const category = TOUR_CATEGORIES[step % TOUR_CATEGORIES.length];
-    const items = await loadManifest(folderForCategory(category));
-    if (items.length === 0) return null;
-    const lap = Math.floor(step / TOUR_CATEGORIES.length);
-    const isPhotos = items[0].type === 'image';
-    const count = isPhotos ? TOUR_PHOTOS_PER_SLOT : 1;
-    const burst = Array.from({ length: count }, (_, k) => items[(lap * count + k) % items.length]);
-    return { category, burst, holdMs: isPhotos ? IMAGE_DWELL_MS : TOUR_DWELL_MS };
-  }
-
-  // Fetches a slot's files ahead of its turn (the HTTP cache does the rest).
-  const warmEntry = (entry) => {
-    if (entry) entry.burst.forEach((item) => preloadItem(item, { waitForVideo: true }));
-  };
-
-  const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
-
-  function startMobileTour() {
-    if (!tourAllowed()) return;
-    const token = ++tourToken;
-
-    const run = async () => {
-      for (let step = 0; token === tourToken; step++) {
-        const entry = await tourEntry(step);
-        if (token !== tourToken) return;
-        if (!entry) { await wait(TOUR_DWELL_MS); continue; } // nothing in that folder yet
-
-        for (let k = 0; k < entry.burst.length; k++) {
-          // Never reveal a frame before it has loaded: a slow connection
-          // stretches the flip a little instead of flashing black.
-          await preloadItem(entry.burst[k], { waitForVideo: true });
-          if (token !== tourToken) return;
-          showItem(entry.burst[k]);
-
-          if (k === 0) {
-            setTourHighlight(entry.category);
-            setTaglineWord(TAGLINE_WORDS[entry.category], true);
-            tourEntry(step + 1).then(warmEntry); // warm the next slot while this one holds
-          }
-
-          await wait(entry.holdMs);
-          if (token !== tourToken) return;
-        }
-      }
-    };
-
-    run();
-  }
-
-  function stopMobileTour() {
-    tourToken++;
-    setTourHighlight(null);
-    setTaglineWord('music', false);
-    stopHoverCycle(); // puts the default hero back
   }
 
   // Same-tab on purpose, Media included: this runs after a short fade, not
@@ -422,7 +310,6 @@
   // restriction. Desktop never reaches this - the anchor's own
   // target="_blank" still opens Media in a new tab there.
   function leaveTo(link) {
-    tourToken++; // freeze the tour so nothing swaps mid-fade
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.body.classList.add('is-leaving');
     window.setTimeout(() => { window.location.href = link.href; }, reducedMotion ? 0 : LEAVE_FADE_MS);
@@ -438,19 +325,171 @@
     });
 
     // The back button can restore this page from the browser's back/forward
-    // cache with the fade still applied and the tour stopped.
+    // cache with the fade still applied.
     window.addEventListener('pageshow', (e) => {
-      if (!e.persisted) return;
-      document.body.classList.remove('is-leaving');
-      if (isMobileViewport() && !introActive) startMobileTour();
+      if (e.persisted) document.body.classList.remove('is-leaving');
     });
+  }
 
-    // Rotating a phone / resizing across the breakpoint hands over between
-    // the tour and desktop hover.
-    window.matchMedia(MOBILE_QUERY).addEventListener('change', (e) => {
-      if (introActive) return; // the intro's onDone starts the tour if we're still mobile by then
-      if (e.matches) startMobileTour(); else stopMobileTour();
+  /* =========================================================
+     LAUNCH SEQUENCE (phones, once per browser session)
+
+     The logo fades in on black, the first photo fades up behind it, then
+     each next photo pushes in from the top and shoves the previous one out
+     the bottom while the logo stays pinned dead-center. A final black panel
+     pushes the last photo out, the logo fades, and the homepage lifts up
+     underneath. Tap anywhere to skip.
+
+     Whether it plays at all is decided by the inline script in index.html
+     (so it can cover the page from first paint): phones only, never with
+     reduced-motion or Save-Data, and only the first homepage visit of a
+     session (?splash=1 forces a replay). It can never trap the page: every
+     wait has a timeout, the whole thing has a hard cap, and any error falls
+     straight through to showing the homepage.
+     ========================================================= */
+
+  // Picked by filename from the "Media - Mobile" folder so the order and
+  // colour rhythm are deliberate; any name that's no longer there is just
+  // skipped, and if too few remain it falls back to an even spread.
+  const SPLASH_FOLDER = 'Media - Mobile';
+  const SPLASH_REEL = [
+    'Aoki-6', 'CMS01803', 'Max crowd shot', 'Mt. Joy double exposure',
+    'Don Toliver', 'STBreakaway', 'MAX STYLER2-9',
+  ];
+  const SPLASH_MIN_PHOTOS = 3;        // fewer than this isn't worth a sequence - skip it
+  const SPLASH_FIRST_FADE_MS = 700;   // first photo fades up from black
+  const SPLASH_FIRST_HOLD_MS = 400;
+  const SPLASH_PUSH_MS = 210;         // each photo pushing the last one out
+  const SPLASH_HOLD_MS = 230;         // how long a photo rests between pushes
+  const SPLASH_EXIT_MS = 280;         // black panel pushing the last photo out
+  const SPLASH_FIRST_WAIT_MS = 2500;  // patience for the first photo on a slow connection
+  const SPLASH_PHOTO_WAIT_MS = 900;   // patience for each later photo before skipping it
+  const SPLASH_HARD_CAP_MS = 8000;    // after this, stop playing photos and exit
+  const SPLASH_EASE = 'cubic-bezier(0.65, 0, 0.25, 1)';
+
+  async function splashPhotos() {
+    const items = (await loadManifest(SPLASH_FOLDER)).filter((item) => item.type === 'image');
+    const picked = SPLASH_REEL
+      .map((name) => items.find((item) => decodeURIComponent(item.src).includes(name)))
+      .filter(Boolean);
+    if (picked.length >= SPLASH_MIN_PHOTOS) return picked;
+
+    const count = Math.min(SPLASH_REEL.length, items.length);
+    if (count < SPLASH_MIN_PHOTOS) return [];
+    return Array.from({ length: count }, (_, k) => items[Math.round((k * (items.length - 1)) / (count - 1))]);
+  }
+
+  // Resolves with the loaded <img>, or null if it failed or took too long.
+  function loadSplashImage(item) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const finish = (ok) => { img.onload = img.onerror = null; resolve(ok ? img : null); };
+      img.onload = () => finish(true);
+      img.onerror = () => finish(false);
+      img.decoding = 'async';
+      img.src = encodeURI(item.src);
     });
+  }
+
+  const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+  const orTimeout = (promise, ms) => Promise.race([promise, wait(ms).then(() => null)]);
+
+  // Web Animations rather than CSS classes so a push can be awaited. If the
+  // browser stops ticking animations (backgrounded tab, a badly stalled
+  // frame) the guard snaps it to its end state, so a panel can never be left
+  // half-way - or an old one removed while its replacement is still off-screen.
+  function animateEl(el, keyframes, ms, easing = SPLASH_EASE) {
+    return new Promise((resolve) => {
+      const anim = el.animate(keyframes, { duration: ms, easing, fill: 'forwards' });
+      const guard = window.setTimeout(() => anim.finish(), ms + 150);
+      anim.onfinish = () => { window.clearTimeout(guard); resolve(); };
+    });
+  }
+
+  function makePanel(img) {
+    const panel = document.createElement('div');
+    panel.className = img ? 'splash__panel splash__panel--photo' : 'splash__panel';
+    if (img) panel.appendChild(img);
+    return panel;
+  }
+
+  // Resolves once the homepage is on its way in - it never rejects.
+  async function runSplash() {
+    const root = document.documentElement;
+    const splash = document.getElementById('splash');
+    const reel = document.getElementById('splashReel');
+    const logo = document.getElementById('splashLogo');
+
+    let ended = false;
+    const end = () => {
+      if (ended) return;
+      ended = true;
+      root.classList.add('splash-done');   // homepage content fades up
+      if (splash) splash.classList.add('is-out'); // overlay fades away
+      window.setTimeout(() => {
+        root.classList.remove('splash-on', 'splash-done');
+        if (splash) splash.remove();
+      }, 700);
+    };
+
+    if (!splash || !reel || !logo) { end(); return; }
+
+    const startedAt = performance.now();
+    let skip;
+    const skipped = new Promise((resolve) => { skip = resolve; });
+    let wasSkipped = false;
+    splash.addEventListener('pointerdown', () => { wasSkipped = true; skip(); }, { once: true });
+    const nap = (ms) => Promise.race([wait(ms), skipped]);
+    const playing = () => !wasSkipped && performance.now() - startedAt < SPLASH_HARD_CAP_MS;
+
+    try {
+      const photos = await splashPhotos();
+      if (photos.length < SPLASH_MIN_PHOTOS) { end(); return; }
+
+      // All photos start downloading at once; the logo doesn't wait on them.
+      const loads = photos.map(loadSplashImage);
+      logo.animate([{ opacity: 0 }, { opacity: 0.95 }], { duration: 520, delay: 80, easing: 'ease', fill: 'forwards' });
+
+      const first = await orTimeout(loads[0], SPLASH_FIRST_WAIT_MS);
+      if (!first || !playing()) { end(); return; }
+
+      let current = makePanel(first);
+      reel.appendChild(current);
+      current.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SPLASH_FIRST_FADE_MS, easing: 'ease', fill: 'forwards' });
+      await nap(SPLASH_FIRST_FADE_MS + SPLASH_FIRST_HOLD_MS);
+
+      for (let k = 1; k < photos.length && playing(); k++) {
+        const img = await orTimeout(loads[k], SPLASH_PHOTO_WAIT_MS);
+        if (!img) continue; // didn't make it in time - skip this one rather than stall
+        if (!playing()) break;
+
+        const next = makePanel(img);
+        next.style.transform = 'translateY(-100%)';
+        reel.appendChild(next);
+        await Promise.all([
+          animateEl(next, [{ transform: 'translateY(-100%)' }, { transform: 'translateY(0)' }], SPLASH_PUSH_MS),
+          animateEl(current, [{ transform: 'translateY(0)' }, { transform: 'translateY(100%)' }], SPLASH_PUSH_MS),
+        ]);
+        current.remove();
+        current = next;
+        await nap(SPLASH_HOLD_MS);
+      }
+
+      // Exit: a black panel pushes the last photo out while the logo fades.
+      if (!wasSkipped) {
+        const black = makePanel(null);
+        black.style.transform = 'translateY(-100%)';
+        reel.appendChild(black);
+        logo.animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: SPLASH_EXIT_MS, easing: 'ease', fill: 'forwards' });
+        await Promise.all([
+          animateEl(black, [{ transform: 'translateY(-100%)' }, { transform: 'translateY(0)' }], SPLASH_EXIT_MS),
+          animateEl(current, [{ transform: 'translateY(0)' }, { transform: 'translateY(100%)' }], SPLASH_EXIT_MS),
+        ]);
+      }
+    } catch (err) {
+      console.warn('[splash] skipped after an error', err);
+    }
+    end();
   }
 
   /* =========================================================
@@ -458,13 +497,16 @@
      ========================================================= */
 
   document.addEventListener('DOMContentLoaded', () => {
-    // On a phone, start fetching the first Media burst during the intro so
-    // the first lap of the tour doesn't have to wait on the network.
-    if (isMobileViewport() && tourAllowed()) tourEntry(0).then(warmEntry);
-
-    runIntroCycle(() => { if (isMobileViewport()) startMobileTour(); });
     initHoverCycling();
     initMobileNav();
     resolveDefaultBackground();
+
+    // The tagline intro waits until the launch sequence has lifted so
+    // nobody misses it behind the overlay.
+    if (document.documentElement.classList.contains('splash-on')) {
+      runSplash().then(runIntroCycle);
+    } else {
+      runIntroCycle();
+    }
   });
 })();

@@ -39,6 +39,11 @@ const ASSET_ROOTS = ['assets - home', 'assets - marketing', 'assets - management
 const AUDIO_STRIPPED_ROOTS = ['assets - home', 'assets - marketing'];
 const WEB_DIR = '.web';
 const MAX_WIDTH = 2560;   // plenty for a full-bleed background, even on big/hi-dpi screens
+// Folders named "... - Mobile" only ever load on phones, whose widest screens
+// are ~1290 physical pixels - 2560 there is just wasted download (a splash of
+// several photos was ~3MB instead of ~1MB). Originals are untouched.
+const MOBILE_SCOPE_SUFFIX = ' - Mobile';
+const MOBILE_MAX_WIDTH = 1440;
 const WEBP_QUALITY = 78;
 
 // CRF-based, not a fixed low bitrate - keeps quality high and just lets
@@ -93,9 +98,11 @@ async function compressImage(assetsRoot, scope, file) {
     return { outName, skipped: true };
   }
 
+  const maxWidth = scope.endsWith(MOBILE_SCOPE_SUFFIX) ? MOBILE_MAX_WIDTH : MAX_WIDTH;
+
   await sharp(srcPath)
     .rotate() // respect EXIF orientation
-    .resize({ width: MAX_WIDTH, withoutEnlargement: true })
+    .resize({ width: maxWidth, withoutEnlargement: true })
     .webp({ quality: WEBP_QUALITY })
     .toFile(outPath);
 

@@ -9,8 +9,35 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="preload" as="image" href="brand/thomas-brown-logo.png" media="(max-width: 720px)">
+<script>
+  // Phone-only launch sequence (the photo push in js/main.js). It's decided
+  // here, before first paint, so the homepage never flashes underneath it.
+  // Plays once per browser session; add ?splash=1 to the URL to replay it.
+  (function () {
+    try {
+      var root = document.documentElement;
+      var forced = /[?&]splash=1(&|$)/.test(location.search);
+      var phone = window.matchMedia('(max-width: 720px)').matches;
+      var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+                 !!(navigator.connection && navigator.connection.saveData);
+      var seen = false;
+      try { seen = sessionStorage.getItem('splashSeen') === '1'; } catch (e) {}
+      if (!phone || calm || (seen && !forced)) return;
+      root.classList.add('splash-on');
+      try { sessionStorage.setItem('splashSeen', '1'); } catch (e) {}
+      // If main.js never takes over (failed load, script error), don't leave the site hidden.
+      setTimeout(function () { root.classList.remove('splash-on'); }, 10000);
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
+
+<div class="splash" id="splash" aria-hidden="true">
+  <div class="splash__reel" id="splashReel"></div>
+  <img class="splash__logo" id="splashLogo" src="brand/thomas-brown-logo.png" alt="" width="475" height="125">
+</div>
 
 <main class="hero" id="hero">
 

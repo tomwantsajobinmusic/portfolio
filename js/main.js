@@ -348,14 +348,12 @@
      straight through to showing the homepage.
      ========================================================= */
 
-  // Picked by filename from the "Media - Mobile" folder so the order and
-  // colour rhythm are deliberate; any name that's no longer there is just
-  // skipped, and if too few remain it falls back to an even spread.
-  const SPLASH_FOLDER = 'Media - Mobile';
-  const SPLASH_REEL = [
-    'Aoki-6', 'CMS01803', 'Max crowd shot', 'Mt. Joy double exposure',
-    'Don Toliver', 'STBreakaway', 'MAX STYLER2-9',
-  ];
+  // The reel is simply the contents of "assets - home/Splash - Mobile", in
+  // filename order - prefix them 01, 02, 03... to set the order. Drop vertical
+  // (9:16-ish) photos there and run `node scripts/build-assets.js`. More than
+  // SPLASH_MAX_PHOTOS would just make it drag, so extras are ignored.
+  const SPLASH_FOLDER = 'Splash - Mobile';
+  const SPLASH_MAX_PHOTOS = 8;
   const SPLASH_MIN_PHOTOS = 3;        // fewer than this isn't worth a sequence - skip it
   const SPLASH_FIRST_FADE_MS = 700;   // first photo fades up from black
   const SPLASH_FIRST_HOLD_MS = 400;
@@ -368,15 +366,8 @@
   const SPLASH_EASE = 'cubic-bezier(0.65, 0, 0.25, 1)';
 
   async function splashPhotos() {
-    const items = (await loadManifest(SPLASH_FOLDER)).filter((item) => item.type === 'image');
-    const picked = SPLASH_REEL
-      .map((name) => items.find((item) => decodeURIComponent(item.src).includes(name)))
-      .filter(Boolean);
-    if (picked.length >= SPLASH_MIN_PHOTOS) return picked;
-
-    const count = Math.min(SPLASH_REEL.length, items.length);
-    if (count < SPLASH_MIN_PHOTOS) return [];
-    return Array.from({ length: count }, (_, k) => items[Math.round((k * (items.length - 1)) / (count - 1))]);
+    const items = await loadManifest(SPLASH_FOLDER);
+    return items.filter((item) => item.type === 'image').slice(0, SPLASH_MAX_PHOTOS);
   }
 
   // Resolves with the loaded <img>, or null if it failed or took too long.

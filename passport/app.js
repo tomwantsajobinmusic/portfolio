@@ -1,5 +1,5 @@
-import * as db from './store.js?v=1791910127';
-import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1791910127';
+import * as db from './store.js?v=1794840435';
+import { engrave, passportPhoto, stamp, oneColorFlag, loadImage, fileToImage, toBlob, INKS } from './art.js?v=1794840435';
 
 const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -88,7 +88,7 @@ const promotersOf = e => { const t = String(e.title || '').trim(); if (!t) retur
   // co-promoters and stage hosts from the festival calendar (Basscon, Unreal… at Wasteland), for that year
   const k = coreKey(t), f = (FESTS || []).find(f => [f.name, ...(f.aliases || [])].some(n => coreKey(n) === k));
   const yr = String(e.date || '').slice(0, 4), co = f && f.promoters ? (Array.isArray(f.promoters) ? f.promoters : f.promoters[yr] || []) : [];
-  for (const n of co) if (!out.some(o => keyOf(o) === keyOf(n))) out.push(n);
+  for (const n of [...co, ...((f && f.art) || [])]) if (!out.some(o => keyOf(o) === keyOf(n))) out.push(n);
   return out; };
 const promoLogo = n => logoFor(n, ['Promoters']) || (LOGOS || []).find(l => l.key === keyOf(n)) || null;
 
@@ -125,7 +125,8 @@ async function start() {
   // View-only books: ?demo shows Thomas's live passport, ?u=name shows anyone who made theirs public.
   if (q.has('demo') || q.get('u')) {
     const who = (q.get('u') || 'thomasbrown').toLowerCase().replace(/^@/, '');
-    let d = null; try { d = await db.getPublicBook(who); } catch (e) {}
+    // the server gets 10 seconds; if it can't answer (slow, paused, or blocked on this network) Thomas's book opens from its saved copy
+    let d = null; try { d = await within(db.getPublicBook(who), 10000, null); } catch (e) {}
     if ((!d || !d.entries.length) && who === 'thomasbrown') d = await fetch(dataURL('data/demo/demo.json')).then(r => r.json()).catch(() => null);
     if (!d) { app.innerHTML = '<section class="screen cover"><h1>Rave Passport</h1><p class="gate-q">That passport is private.</p><span></span></section>'; return; }
     DEMO = true; state = { profile: d.profile, entries: noFoil(d.entries) }; return go('book');
